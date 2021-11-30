@@ -35,11 +35,7 @@ module.exports = workspace => {
 	let foundIdentifier = null;
 
 	identifiers.forEach(identifier => {
-		if(identifier.length !== current.length) {
-			current = workspace.slice(-identifier.length);
-		}
-
-		if(current.toLowerCase().endsWith(identifier)) {
+		if(workspace.toLowerCase().endsWith(identifier)) {
 			foundIdentifier = identifier;
 		}
 	});
