@@ -2,7 +2,6 @@ const tokenize = require('./tokenize');
 const detect = require('./detect');
 
 module.exports = data => {
-	console.log(data)
 	const characters = data.split('');
 
 	let structure = [];

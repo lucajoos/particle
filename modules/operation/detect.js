@@ -1,8 +1,10 @@
-module.exports = workspace => {
-	console.log(workspace)
-	let current = workspace.slice(-1);
+const identifiers = require('./identifiers');
 
-	if(/[^\w\s]/.test(current)) {
+module.exports = workspace => {
+	let current;
+
+	current = workspace.slice(-1);
+	if(/[^\w\s\/]/.test(current)) {
 		return {
 			type: 'punctuation',
 			length: current.length
@@ -14,12 +16,40 @@ module.exports = workspace => {
 		}
 	}
 
-	current = workspace.slice(-global.parameters.options.tab)
-	console.log(new RegExp('\\s'.repeat(global.parameters.options.tab)))
+	current = workspace.slice(-2);
+	if(/\/\//.test(current)) {
+		return {
+			type: 'comment',
+			length: current.length
+		}
+	}
+
+	current = workspace.slice(-global.parameters.options.tab);
 	if(new RegExp('\\s'.repeat(global.parameters.options.tab)).test(current)) {
 		return {
 			type: 'tab',
 			length: current.length
 		}
 	}
+
+	let foundIdentifier = null;
+
+	identifiers.forEach(identifier => {
+		if(identifier.length !== current.length) {
+			current = workspace.slice(-identifier.length);
+		}
+
+		if(current.toLowerCase().endsWith(identifier)) {
+			foundIdentifier = identifier;
+		}
+	});
+
+	if(foundIdentifier) {
+		return {
+			type: 'identifier',
+			length: foundIdentifier.length
+		};
+	}
+
+	return null;
 };
