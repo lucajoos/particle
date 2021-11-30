@@ -1,1 +1,1 @@
-module.exports = ['import'];
+module.exports = ['!import', '!use'];

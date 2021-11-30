@@ -2,7 +2,7 @@
 
 @documentclass(article) // Another comment
 
-import amsmath
+!use asmath
 
 @title(Simple Sample)
 @author(My Name)
@@ -18,6 +18,7 @@ document:
     @LaTeX is a great program for writing math.
     I can write in line math such as $a^2+b^2=c^2$ %$ tells LaTexX to compile as math.
     I can also give equations their own space:
+    !import small.cl
     equation:
         @gamma^2+@theta^2=@omega^2
     If I do not leave any blank lines @LaTeX will continue this text without making it into a new paragraph.  Notice how there was no indentation in the text after equation (1).

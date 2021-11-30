@@ -4,7 +4,7 @@ module.exports = workspace => {
 	let current;
 
 	current = workspace.slice(-1);
-	if(/[^\w\s\/]/.test(current)) {
+	if(/[^\w\s\/!]/.test(current)) {
 		return {
 			type: 'punctuation',
 			length: current.length
@@ -35,7 +35,7 @@ module.exports = workspace => {
 	let foundIdentifier = null;
 
 	identifiers.forEach(identifier => {
-		if(workspace.toLowerCase().endsWith(identifier)) {
+		if(workspace.toLowerCase().endsWith(`${identifier}`)) {
 			foundIdentifier = identifier;
 		}
 	});
