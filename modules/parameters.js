@@ -2,8 +2,13 @@ const { version } = require('../package.json');
 const { program } = require('commander');
 
 module.exports = argv => {
+	const DEFAULTS = {
+		tab: 4
+	};
+
 	program.version(version);
 	program
+		.option('-t, --tab <length>', 'set the length of a tab', DEFAULTS.tab.toString())
 		.option('-w, --watch', 'automatically re-render after change')
 		.option('-s, --silent', 'disable output logs');
 
@@ -12,8 +17,12 @@ module.exports = argv => {
 	}
 
 	program.parse(argv);
+
+	let options = program.opts();
+	options.tab = parseInt(options.tab) || DEFAULTS.tab
+
 	return {
-		options: program.opts(),
+		options: options,
 		args: program.args
-	}
+	};
 };

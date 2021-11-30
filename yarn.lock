@@ -189,6 +189,11 @@ mimic-fn@^2.1.0:
   resolved "https://registry.yarnpkg.com/mimic-fn/-/mimic-fn-2.1.0.tgz#7ed2c2ccccaf84d3ffcb7a69b57711fc2083401b"
   integrity sha512-OqbOk5oEQeAZ8WXWydlu9HJjz9WVdEIvamMCcXmuqUYjTknH/sqsWvhQ3vgwKFRR1HpjvNBKQ37nbJgYzGqGcg==
 
+onceupon.js@^1.5.11:
+  version "1.5.11"
+  resolved "https://registry.yarnpkg.com/onceupon.js/-/onceupon.js-1.5.11.tgz#da1c4b7f6b3b8fea9cc27d62ed6202e9d33cdca8"
+  integrity sha512-SQkSfRhslrezF8I0ovkeoz8Zq+QGChwdePxbMt3Ow5zAlyWXcXxZ+Q28BkZ1m+xc647Yqmj2vYJ3MXH0GilC2w==
+
 onetime@^5.1.0:
   version "5.1.2"
   resolved "https://registry.yarnpkg.com/onetime/-/onetime-5.1.2.tgz#d0e96ebb56b07476df1dd9c4806e5237985ca45e"
