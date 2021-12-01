@@ -30,8 +30,10 @@ module.exports = argv => {
 
 	options.library = {
 		object: library,
-		keys: Object.keys(library),
-		values: Object.values(library)
+		tokens: {
+			keys: Object.keys(library.tokens),
+			values: Object.values(library.tokens)
+		}
 	};
 
 	return {

@@ -1,12 +1,12 @@
-module.exports = workspace => {
+module.exports = (workspace, library) => {
 	let found = [];
 
-	global.options.library.values.forEach((tag, index) => {
+	library.tokens.values.forEach((tag, index) => {
 		tag.forEach(check => {
 			const matches = workspace?.match(check.use);
 
 			if(matches ? matches[0]?.length > 0 : false) {
-				found.push({...check, tag: global.options.library.keys[index], match: matches[0]});
+				found.push({...check, tag: library.tokens.keys[index], match: matches[0]});
 			}
 		})
 	});

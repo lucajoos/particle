@@ -1,7 +1,7 @@
 const detect = require('./detect');
 
-module.exports = (workspace, index) => {
-	const detection = detect(workspace);
+module.exports = (workspace, index, library) => {
+	const detection = detect(workspace, library);
 
 	if(detection) {
 		if(workspace.length > 1 ? workspace.slice(0, -detection.match.length).length > 0 : false) {
