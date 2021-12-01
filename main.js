@@ -4,5 +4,5 @@ const operation = require('./modules/operation');
 
 global.options.args.forEach(async document => {
 	const data = await file.read(document);
-	console.log(operation.tokenize(data, global.options.library))
+	console.log(operation.tokenize({ data, library: global.options.library }))
 });

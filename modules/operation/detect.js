@@ -1,4 +1,4 @@
-module.exports = (workspace, library) => {
+module.exports = ({workspace='', library={}}) => {
 	let found = [];
 
 	library.tokens.values.forEach((tag, index) => {

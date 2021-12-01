@@ -1,7 +1,7 @@
 const evaluate = require('./evaluate');
 const detect = require('./detect');
 
-module.exports = (data, library) => {
+module.exports = ({ data, library }) => {
 	const characters = data.split('');
 
 	let structure = [];
@@ -42,7 +42,7 @@ module.exports = (data, library) => {
 		const char = characters[index];
 		workspace = `${workspace}${char}`;
 
-		const tokens = evaluate(workspace, index, library);
+		const tokens = evaluate({ workspace, index, library });
 
 		if(tokens) {
 			if(!await && !tokens[tokens.length - 1].detection.await) {
@@ -70,7 +70,7 @@ module.exports = (data, library) => {
 			(index === data.length - 1) &&
 			workspace.length > 0
 		) {
-			const detection = detect(workspace, library);
+			const detection = detect({ workspace, library });
 
 			if(await && candidates.length > 0) {
 				const candidate = resolve();
