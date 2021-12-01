@@ -11,34 +11,66 @@ module.exports = ({ tokens, library }) => {
 		data: /.*/
 	};
 
-	console.log(tokens.length)
+	const verify = (token, rule) => {
+		let used = [];
+		let isAllowed = false;
+
+		rule.tokens.forEach(ruleToken => {
+			ruleToken = Object.assign({...DEFAULT_RULE_TOKEN}, ruleToken);
+
+			if(
+				ruleToken.detection.tag.test(token.detection.tag) &&
+				ruleToken.data.test(token.data)
+			) {
+				isAllowed = true;
+				used.push(token);
+			}
+		});
+
+		return {
+			isAllowed,
+			used
+		}
+	};
+
 	while(index < tokens.length) {
-		let usedTokens = [];
+		let used = [];
+		let fulfilled = true;
 
 		library.grammar.values.forEach((statement, statementIndex) => {
 			if(index + statement.length <= tokens.length) {
-				let fulfilled = true;
 				let ruleIndex = 0;
+				let shift = 0;
 
 				while(ruleIndex < statement.length) {
 					const rule = statement[ruleIndex];
 
-					const verifyToken = tokens[index + ruleIndex];
-					let found = false;
+					let isAllowed = false;
+					let isRepeating = rule?.isRepeating || false;
+					let isFirstRun = true;
+					let repeatingIndex = 0;
 
-					rule.tokens.forEach(ruleToken => {
-						ruleToken = Object.assign({...DEFAULT_RULE_TOKEN}, ruleToken);
+					while(isFirstRun || isRepeating) {
+						const { isAllowed: isAllowedDeep, used: usedDeep } = verify(tokens[index + ruleIndex + repeatingIndex + shift], statement[ruleIndex]);
 
-						if(
-							ruleToken.detection.tag.test(verifyToken.detection.tag) &&
-							ruleToken.data.test(verifyToken.data)
-						) {
-							found = true;
-							usedTokens.push(verifyToken);
+						if(isAllowedDeep && isFirstRun) {
+							used = [...used, ...usedDeep];
+							isAllowed = true;
+						} else if(isAllowedDeep && isRepeating) {
+							used = [...used, ...usedDeep];
+						} else if(!isAllowedDeep && isRepeating) {
+							isRepeating = false;
+							shift = repeatingIndex - 1;
 						}
-					});
 
-					if(found !== rule.is) {
+						if(isFirstRun) {
+							isFirstRun = false;
+						}
+
+						repeatingIndex++;
+					}
+
+					if(isAllowed !== rule.is) {
 						fulfilled = false;
 					}
 
@@ -50,7 +82,7 @@ module.exports = ({ tokens, library }) => {
 						result.push({
 							statement: 'unused',
 							tokens: unusedTokens,
-							index: index - usedTokens.length
+							index: index - used.length
 						});
 
 						unusedTokens = [];
@@ -58,12 +90,11 @@ module.exports = ({ tokens, library }) => {
 
 					result.push({
 						statement: library.grammar.keys[statementIndex],
-						tokens: usedTokens,
+						tokens: used,
 						index
 					});
 
-					// Skip used tokens
-					index = index + usedTokens.length - 1;
+					index = index + used.length - 1;
 				} else {
 					unusedTokens.push(tokens[index]);
 				}

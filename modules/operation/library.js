@@ -39,7 +39,7 @@ module.exports = ({ tabLength }) => {
 				}]
 			}, {
 				is: true,
-				repeat: true,
+				isRepeating: true,
 				tokens: [{
 					detection: {
 						tag: /text|punctuation|tab|comment|identifier/
