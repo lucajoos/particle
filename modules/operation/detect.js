@@ -1,50 +1,20 @@
-const identifiers = require('./identifiers');
-
 module.exports = workspace => {
-	let current;
+	let found = [];
 
-	current = workspace.slice(-1);
-	if(/[^\w\s\/!]/.test(current)) {
-		return {
-			type: 'punctuation',
-			length: current.length
-		}
-	} else if(/[\t\r\n]/.test(current)) {
-		return {
-			type: 'meta',
-			length: current.length
-		}
-	}
+	global.options.library.values.forEach((tag, index) => {
+		tag.forEach(check => {
+			const matches = workspace?.match(check.use);
 
-	current = workspace.slice(-2);
-	if(/\/\//.test(current)) {
-		return {
-			type: 'comment',
-			length: current.length
-		}
-	}
-
-	current = workspace.slice(-global.parameters.options.tab);
-	if(new RegExp('\\s'.repeat(global.parameters.options.tab)).test(current)) {
-		return {
-			type: 'tab',
-			length: current.length
-		}
-	}
-
-	let foundIdentifier = null;
-
-	identifiers.forEach(identifier => {
-		if(workspace.toLowerCase().endsWith(`${identifier}`)) {
-			foundIdentifier = identifier;
-		}
+			if(matches ? matches[0]?.length > 0 : false) {
+				found.push({...check, tag: global.options.library.keys[index], match: matches[0]});
+			}
+		})
 	});
 
-	if(foundIdentifier) {
-		return {
-			type: 'identifier',
-			length: foundIdentifier.length
-		};
+	if(found.length > 0) {
+		return found.reduce((a, b) => {
+			return (a?.priority > b?.priority) ? a : b;
+		});
 	}
 
 	return null;

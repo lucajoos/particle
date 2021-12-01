@@ -1,14 +1,17 @@
 const { version } = require('../package.json');
 const { program } = require('commander');
+const path = require('path');
 
 module.exports = argv => {
 	const DEFAULTS = {
-		tab: 4
+		tabLength: 4,
+		libraryPath: './modules/operation/library.js'
 	};
 
 	program.version(version);
 	program
-		.option('-t, --tab <length>', 'set the length of a tab', DEFAULTS.tab.toString())
+		.option('-l, --library <path>', 'manually set the library path', DEFAULTS.libraryPath)
+		.option('-t, --tab <length>', 'set the length of a tab', DEFAULTS.tabLength.toString())
 		.option('-w, --watch', 'automatically re-render after change')
 		.option('-s, --silent', 'disable output logs');
 
@@ -19,10 +22,20 @@ module.exports = argv => {
 	program.parse(argv);
 
 	let options = program.opts();
-	options.tab = parseInt(options.tab) || DEFAULTS.tab
+	options.tabLength = parseInt(options.tabLength) || DEFAULTS.tabLength;
+	options.libraryPath = options.library || DEFAULTS.libraryPath;
+
+	// Require the library
+	const library = require(path.resolve(options.libraryPath || DEFAULTS.libraryPath))(options);
+
+	options.library = {
+		object: library,
+		keys: Object.keys(library),
+		values: Object.values(library)
+	};
 
 	return {
-		options: options,
-		args: program.args
+		args: program.args,
+		...options
 	};
 };

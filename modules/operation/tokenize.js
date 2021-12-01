@@ -1,29 +1,36 @@
 const detect = require('./detect');
 
-module.exports = workspace => {
+module.exports = (workspace, index) => {
 	const detection = detect(workspace);
-	let result = null;
 
 	if(detection) {
-		if(workspace.length > 1 ? workspace.slice(0, -detection.length).length > 0 : false) {
-			result = [
+		if(workspace.length > 1 ? workspace.slice(0, -detection.match.length).length > 0 : false) {
+			const text = workspace.slice(0, -detection.match.length);
+
+			return [
 				{
-					type: 'text',
-					data: workspace.slice(0, -detection.length)
+					detection: {
+						use: null,
+						tag: 'text',
+						priority: -1,
+						await: null,
+						match: text
+					},
+					data: text
 				},
 
 				{
-					type: detection.type,
-					data: workspace.slice(-detection.length)
+					detection,
+					data: workspace.slice(-detection.match.length),
+					index
 				}
 			]
 		} else {
-			result = [{
-				type: detection.type,
-				data: workspace.slice(-detection.length)
+			return [{
+				detection,
+				data: workspace.slice(-detection.match.length),
+				index
 			}];
 		}
 	}
-
-	return result;
 };
