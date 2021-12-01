@@ -29,7 +29,35 @@ module.exports = ({ tabLength }) => {
 				use: /!import$/,
 				priority: 1
 			}]
+		}, grammar: {
+			comment: [{
+				is: true,
+				tokens: [{
+					detection: {
+						tag: /comment/
+					}
+				}]
+			}, {
+				is: true,
+				repeat: true,
+				tokens: [{
+					detection: {
+						tag: /text|punctuation|tab|comment|identifier/
+					}
+				}]
+			}, {
+				is: true,
+				tokens: [{
+					detection: {
+						tag: /meta/,
+					},
+					data: /\r/
+				}, {
+					detection: {
+						tag: /end/
+					}
+				}]
+			}]
 		}
-
 	}
 }

@@ -96,5 +96,16 @@ module.exports = ({ data, library }) => {
 		index++;
 	}
 
+	structure.push({
+		detection: {
+			use: null,
+			tag: 'end',
+			priority: -1,
+			await: null,
+			match: ''
+		},
+		data: ''
+	});
+
 	return structure;
 };

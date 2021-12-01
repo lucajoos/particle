@@ -29,10 +29,13 @@ module.exports = argv => {
 	const library = require(path.resolve(options.libraryPath || DEFAULTS.libraryPath))(options);
 
 	options.library = {
-		object: library,
 		tokens: {
 			keys: Object.keys(library.tokens),
 			values: Object.values(library.tokens)
+		},
+		grammar: {
+			keys: Object.keys(library.grammar),
+			values: Object.values(library.grammar)
 		}
 	};
 
