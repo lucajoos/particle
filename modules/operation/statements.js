@@ -106,7 +106,7 @@ module.exports = ({ tokens, library }) => {
 				result.push({
 					statement: 'unused',
 					tokens: unusedTokens,
-					index: index - usedTokens.length
+					index: index - used.length
 				});
 
 				unusedTokens = [];
