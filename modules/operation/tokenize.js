@@ -1,36 +1,100 @@
+const evaluate = require('./evaluate');
 const detect = require('./detect');
 
-module.exports = (workspace, index) => {
-	const detection = detect(workspace);
+module.exports = data => {
+	const characters = data.split('');
 
-	if(detection) {
-		if(workspace.length > 1 ? workspace.slice(0, -detection.match.length).length > 0 : false) {
-			const text = workspace.slice(0, -detection.match.length);
+	let structure = [];
+	let candidates = [];
+	let await = null;
+	let workspace = '';
+	let index = 0;
 
-			return [
-				{
-					detection: {
+	const resolve = () => {
+		let priority = -1;
+
+		candidates.forEach(candidate => {
+			candidate.forEach(token => {
+				if(token.detection.priority > priority) {
+					priority = token.detection.priority
+				}
+			});
+		});
+
+		candidates = candidates.filter(candidate => {
+			let isHigher = false;
+
+			candidate.forEach(token => {
+				if(token.detection.priority >= priority) {
+					isHigher = true;
+				}
+			});
+
+			return isHigher;
+		});
+
+		return candidates.reduce((a, b) => {
+			return (a[a.length - 1]?.index < b[b.length - 1]?.index) ? a : b;
+		});
+	};
+
+	while(index < characters.length) {
+		const char = characters[index];
+		workspace = `${workspace}${char}`;
+
+		const tokens = evaluate(workspace, index);
+
+		if(tokens) {
+			if(!await && !tokens[tokens.length - 1].detection.await) {
+				structure = [...structure, ...tokens];
+				workspace = '';
+			} else {
+				if(!await && tokens[tokens.length - 1].detection.await) {
+					await = tokens[tokens.length - 1].detection.await;
+				}
+
+				if(await ? !await.test(workspace) : true) {
+					candidates.push(tokens);
+				} else if(await.test(workspace)) {
+					const candidate = resolve();
+					structure = [...structure, ...candidate];
+					workspace = '';
+					candidates = [];
+					await = null;
+					index = candidate[candidate.length - 1].index;
+				}
+			}
+		}
+
+		if(
+			(index === data.length - 1) &&
+			workspace.length > 0
+		) {
+			const detection = detect(workspace);
+
+			if(await && candidates.length > 0) {
+				const candidate = resolve();
+				structure = [...structure, ...candidate];
+				workspace = '';
+				candidates = [];
+				await = null;
+				index = candidate[candidate.length - 1].index;
+			} else {
+				structure.push({
+					detection: detection ? detection : {
 						use: null,
 						tag: 'text',
 						priority: -1,
 						await: null,
-						match: text
+						match: workspace
 					},
-					data: text
-				},
-
-				{
-					detection,
-					data: workspace.slice(-detection.match.length),
-					index
-				}
-			]
-		} else {
-			return [{
-				detection,
-				data: workspace.slice(-detection.match.length),
-				index
-			}];
+					data: workspace
+				});
+			}
 		}
+
+		index++;
 	}
+
+	return structure;
 };

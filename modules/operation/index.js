@@ -1,4 +1,6 @@
 module.exports = {
-	lexical: require('./tokenize'),
-	analyze: require('./analyze')
+	evaluate: require('./evaluate'),
+	tokenize: require('./tokenize'),
+	detect: require('./detect'),
+	library: require('./library')
 }
