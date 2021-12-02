@@ -41,10 +41,16 @@ module.exports = ({ tabLength }) => {
 				}]
 			}, {
 				is: true,
+				isRepeating: true,
 				tokens: [{
 					detection: {
 						tag: /text/
 					}
+				}, {
+					detection: {
+						tag: /punctuation/
+					},
+					data: /,/
 				}]
 			}, {
 				is: true,
