@@ -30,6 +30,34 @@ module.exports = ({ tabLength }) => {
 				priority: 1
 			}]
 		}, grammar: {
+			section: [{
+				is: true,
+				tokens: [{
+					detection: {
+						tag: /text/
+					}
+				}]
+			}, {
+				is: true,
+				tokens: [{
+					detection: {
+						tag: /punctuation/
+					},
+					data: /:/
+				}]
+			}, {
+				is: true,
+				tokens: [{
+					detection: {
+						tag: /meta/,
+					},
+					data: /[\r\n]/
+				}, {
+					detection: {
+						tag: /end/
+					}
+				}]
+			}],
 			command: [{
 				is: true,
 				tokens: [{
