@@ -47,6 +47,7 @@ module.exports = ({ tabLength }) => {
 				}]
 			}, {
 				is: true,
+				isLookahead: true,
 				tokens: [{
 					detection: {
 						tag: /meta/,
@@ -82,6 +83,7 @@ module.exports = ({ tabLength }) => {
 				}]
 			}, {
 				is: true,
+				isLookahead: true,
 				tokens: [{
 					detection: {
 						tag: /meta/,
@@ -110,6 +112,7 @@ module.exports = ({ tabLength }) => {
 				}]
 			}, {
 				is: true,
+				isLookahead: true,
 				tokens: [{
 					detection: {
 						tag: /meta/,

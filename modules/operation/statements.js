@@ -40,6 +40,7 @@ module.exports = ({ tokens, library }) => {
 
 		library.grammar.values.forEach((statement, statementIndex) => {
 			let fulfilled = true;
+			let lookahead = 0;
 			let used = [];
 
 			if(!hasFound) {
@@ -51,7 +52,8 @@ module.exports = ({ tokens, library }) => {
 						const rule = statement[ruleIndex];
 
 						let isAllowed = false;
-						let isRepeating = rule?.isRepeating || false;
+						let isRepeating = rule?.isRepeating === undefined ? false : rule?.isRepeating;
+						let isLookahead = rule?.isLookahead === undefined ? false : rule?.isLookahead;
 						let isFirstRun = true;
 						let repeatingIndex = 0;
 
@@ -59,10 +61,19 @@ module.exports = ({ tokens, library }) => {
 							const { isAllowed: isAllowedDeep, used: usedDeep } = verify(tokens[index + ruleIndex + repeatingIndex + shift], statement[ruleIndex]);
 
 							if(isAllowedDeep && isFirstRun) {
-								used = [...used, ...usedDeep];
+								if(!isLookahead) {
+									used = [...used, ...usedDeep];
+								} else {
+									lookahead++;
+								}
+
 								isAllowed = true;
 							} else if(isAllowedDeep && isRepeating) {
-								used = [...used, ...usedDeep];
+								if(!isLookahead) {
+									used = [...used, ...usedDeep];
+								} else {
+									lookahead++;
+								}
 							} else if(!isAllowedDeep && isRepeating) {
 								isRepeating = false;
 								shift = repeatingIndex - 1;
@@ -88,8 +99,7 @@ module.exports = ({ tokens, library }) => {
 						if(unusedTokens.length > 0) {
 							result.push({
 								statement: 'unused',
-								tokens: unusedTokens,
-								index: index - unusedTokens.length - 1
+								tokens: unusedTokens
 							})
 
 							unusedTokens = []
@@ -97,11 +107,10 @@ module.exports = ({ tokens, library }) => {
 
 						result.push({
 							statement: library.grammar.keys[statementIndex],
-							tokens: used,
-							index: index + shift + ruleIndex - 1
+							tokens: used
 						});
 
-						index = index + shift + ruleIndex - 1;
+						index = index + shift + ruleIndex - lookahead - 1;
 					}
 				}
 			}
