@@ -117,7 +117,7 @@ module.exports = ({ tokens, library }) => {
 							tokens: used
 						});
 
-						index = index + shift + ruleIndex - lookahead - 1;
+						index = index + shift + ruleIndex - lookahead - 1 - lookbehind;
 					}
 				}
 			}
@@ -131,8 +131,7 @@ module.exports = ({ tokens, library }) => {
 			if(unusedTokens.length > 0) {
 				result.push({
 					statement: 'unused',
-					tokens: unusedTokens,
-					index: index
+					tokens: unusedTokens
 				});
 
 				unusedTokens = [];
