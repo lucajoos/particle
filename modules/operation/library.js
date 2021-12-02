@@ -30,6 +30,35 @@ module.exports = ({ tabLength }) => {
 				priority: 1
 			}]
 		}, grammar: {
+			emptyLine: [{
+				is: true,
+				isLookbehind: true,
+				tokens: [{
+					detection: {
+						tag: /meta/
+					},
+
+					data: /\n/
+				}]
+			}, {
+				is: true,
+				tokens: [{
+					detection: {
+						tag: /meta/
+					},
+
+					data: /\r/
+				}]
+			}, {
+				is: true,
+				tokens: [{
+					detection: {
+						tag: /meta/
+					},
+
+					data: /\n/
+				}]
+			}],
 			section: [{
 				is: true,
 				tokens: [{

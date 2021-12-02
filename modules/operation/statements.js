@@ -37,8 +37,10 @@ module.exports = ({ tokens, library }) => {
 
 	while(index < tokens.length) {
 		let hasFound = false;
+		console.log('TOKEN: (' + index.toString() + '|' + (tokens.length - 1).toString() + ')')
 
 		library.grammar.values.forEach((statement, statementIndex) => {
+			console.log(`##STATE: ${statementIndex}`)
 			let fulfilled = true;
 			let lookahead = 0;
 			let used = [];
@@ -47,6 +49,7 @@ module.exports = ({ tokens, library }) => {
 				if(index < tokens.length) {
 					let ruleIndex = 0;
 					let shift = 0;
+					let lookbehind = statement.filter(rule => rule?.isLookbehind === undefined ? false : rule?.isLookbehind).length;
 
 					while(ruleIndex < statement.length) {
 						const rule = statement[ruleIndex];
@@ -54,26 +57,25 @@ module.exports = ({ tokens, library }) => {
 						let isAllowed = false;
 						let isRepeating = rule?.isRepeating === undefined ? false : rule?.isRepeating;
 						let isLookahead = rule?.isLookahead === undefined ? false : rule?.isLookahead;
+						let isLookbehind = rule?.isLookbehind === undefined ? false : rule?.isLookbehind;
 						let isFirstRun = true;
 						let repeatingIndex = 0;
 
+						console.log(`rule: ${ruleIndex} [${tokens[index + ruleIndex + repeatingIndex + shift - lookbehind]?.detection?.tag}] : ${lookbehind}`)
+
 						while(isFirstRun || isRepeating) {
-							const { isAllowed: isAllowedDeep, used: usedDeep } = verify(tokens[index + ruleIndex + repeatingIndex + shift], statement[ruleIndex]);
+							const { isAllowed: isAllowedDeep, used: usedDeep } = verify(tokens[index + ruleIndex + repeatingIndex + shift - lookbehind], statement[ruleIndex]);
 
 							if(isAllowedDeep && isFirstRun) {
-								if(!isLookahead) {
-									used = [...used, ...usedDeep];
-								} else {
+								if(isLookahead) {
 									lookahead++;
+								} else if(!isLookbehind) {
+									used = [...used, ...usedDeep];
 								}
 
 								isAllowed = true;
 							} else if(isAllowedDeep && isRepeating) {
-								if(!isLookahead) {
-									used = [...used, ...usedDeep];
-								} else {
-									lookahead++;
-								}
+								used = [...used, ...usedDeep];
 							} else if(!isAllowedDeep && isRepeating) {
 								isRepeating = false;
 								shift = repeatingIndex - 1;
@@ -90,10 +92,15 @@ module.exports = ({ tokens, library }) => {
 							fulfilled = false;
 						}
 
+						if(isAllowed) {
+							console.log('---allowed')
+						}
+
 						ruleIndex++;
 					}
 
 					if(fulfilled) {
+						console.log('FULLFILLED')
 						hasFound = true;
 
 						if(unusedTokens.length > 0) {
