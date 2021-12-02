@@ -30,6 +30,35 @@ module.exports = ({ tabLength }) => {
 				priority: 1
 			}]
 		}, grammar: {
+			command: [{
+				is: true,
+				tokens: [{
+					detection: {
+						tag: /identifier/
+					},
+
+					data: /!use/
+				}]
+			}, {
+				is: true,
+				tokens: [{
+					detection: {
+						tag: /text/
+					}
+				}]
+			}, {
+				is: true,
+				tokens: [{
+					detection: {
+						tag: /meta/,
+					},
+					data: /[\r\n]/
+				}, {
+					detection: {
+						tag: /end/
+					}
+				}]
+			}],
 			comment: [{
 				is: true,
 				tokens: [{
@@ -51,7 +80,7 @@ module.exports = ({ tabLength }) => {
 					detection: {
 						tag: /meta/,
 					},
-					data: /\r/
+					data: /[\r\n]/
 				}, {
 					detection: {
 						tag: /end/
