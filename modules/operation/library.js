@@ -30,7 +30,55 @@ module.exports = ({ tabLength }) => {
 				priority: 1
 			}]
 		}, grammar: {
-			emptyLine: [{
+			expression: [{
+				is: true,
+				tokens: [{
+					detection: {
+						tag: /punctuation/
+					},
+
+					data: /@/
+				}]
+			}, {
+				is: true,
+				isSplitting: true,
+				split: ' ',
+				tokens: [{
+					detection: {
+						tag: /text/
+					}
+				}]
+			}],
+			break: [{
+				is: false,
+				isLookbehind: true,
+				tokens: [{
+					detection: {
+						tag: /meta/
+					},
+
+					data: /\n/
+				}]
+			}, {
+				is: true,
+				tokens: [{
+					detection: {
+						tag: /meta/
+					},
+
+					data: /\r/
+				}]
+			}, {
+				is: true,
+				tokens: [{
+					detection: {
+						tag: /meta/
+					},
+
+					data: /\n/
+				}]
+			}],
+			empty: [{
 				is: true,
 				isLookbehind: true,
 				tokens: [{
@@ -93,9 +141,7 @@ module.exports = ({ tabLength }) => {
 				tokens: [{
 					detection: {
 						tag: /identifier/
-					},
-
-					data: /!use/
+					}
 				}]
 			}, {
 				is: true,
