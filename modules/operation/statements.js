@@ -7,10 +7,10 @@ module.exports = ({ tokens, library }) => {
 		is: true,
 
 		isRepeating: false,
-		isWildcard: false,
 		isLookahead: false,
 		isLookbehind: false,
 		isSplitting: false,
+		isOptional: false,
 
 		split: null,
 
@@ -52,7 +52,8 @@ module.exports = ({ tokens, library }) => {
 		library.grammar.values.forEach((statement, statementIndex) => {
 			console.log(`##STATE: ${statementIndex}`)
 			let fulfilled = true;
-			let lookahead = 0;
+			let repeating = 0;
+			let optional = 0;
 			let used = [];
 
 			if(!hasFound) {
@@ -67,10 +68,6 @@ module.exports = ({ tokens, library }) => {
 					let isFirstRun = true;
 					let repeatingIndex = 0;
 
-					if(rule.isWildcard && rule.isRepeating) {
-						throw new Error(`'isWildcard' and 'isRepeating' both 'true' on the same rule`);
-					}
-
 					console.log(`rule: ${ruleIndex} [${index + ruleIndex + repeatingIndex + shift - lookbehind}]`)
 
 					while(isFirstRun || rule.isRepeating) {
@@ -78,23 +75,32 @@ module.exports = ({ tokens, library }) => {
 						let token = tokens[tokenIndex];
 						const isAllowedDeep = verify(token, rule);
 
-						if((isAllowedDeep || rule.isWildcard) && isFirstRun) {
-							if(rule.isLookahead) {
-								lookahead++;
-							} else if(!rule.isLookbehind) {
-								used.push(token)
-							}
+						if(!isAllowedDeep && rule.isRepeating) {
+							rule.isRepeating = false;
 
-							if(rule.isWildcard) {
+							if(repeatingIndex > 0) {
+								shift = repeatingIndex - 1;
+							}
+						}
+
+						if(
+							((isAllowedDeep || rule.isOptional) && isFirstRun) ||
+							((isAllowedDeep || rule.isOptional) && rule.isRepeating)
+						) {
+							if(!rule.isLookahead && !rule.isLookbehind) {
 								used.push(token);
 							}
 
-							isAllowed = true;
-						} else if((isAllowedDeep || rule.isWildcard) && rule.isRepeating) {
-							used.push(token)
-						} else if(!isAllowedDeep && rule.isRepeating) {
-							rule.isRepeating = false;
-							shift = repeatingIndex - 1;
+							if(
+								(rule.isOptional && !isAllowedDeep) ||
+								(rule.isLookahead && isAllowedDeep)
+							) {
+								optional++;
+							}
+
+							if(((isAllowedDeep || rule.isOptional) && isFirstRun)) {
+								isAllowed = true;
+							}
 						}
 
 						if(isFirstRun) {
@@ -109,6 +115,7 @@ module.exports = ({ tokens, library }) => {
 					}
 
 					if(isAllowed) {
+						repeating += repeatingIndex;
 						console.log('---allowed')
 					}
 
@@ -116,8 +123,13 @@ module.exports = ({ tokens, library }) => {
 				}
 
 				if(fulfilled) {
-					const updatedIndex = index + shift + ruleIndex - lookahead - 1 - lookbehind;
+					const updatedIndex = index + shift + ruleIndex - optional - lookbehind - 1;
+					console.log(index)
+					console.log(shift)
+					console.log(ruleIndex)
+					console.log(optional)
 					console.log('FULFILLED')
+					console.log(updatedIndex)
 					hasFound = true;
 
 					if(unusedTokens.length > 0) {

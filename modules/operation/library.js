@@ -48,6 +48,38 @@ module.exports = ({ tabLength }) => {
 						tag: /text/
 					}
 				}]
+			}, {
+				is: true,
+				isLookahead: true,
+				isOptional: true,
+				tokens: [{
+					detection: {
+						tag: /punctuation/
+					},
+					data: /\(/
+				}]
+			}, {
+				is: true,
+				isRepeating: true,
+				isLookahead: true,
+				isOptional: true,
+				tokens: [{
+					detection: {
+						tag: /text|punctuation|tab|comment|identifier/
+					},
+
+					data: /[^)]/
+				}]
+			}, {
+				is: true,
+				isLookahead: true,
+				isOptional: true,
+				tokens: [{
+					detection: {
+						tag: /punctuation/
+					},
+					data: /\)/
+				}]
 			}],
 			break: [{
 				is: false,
