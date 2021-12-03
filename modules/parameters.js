@@ -35,6 +35,10 @@ module.exports = argv => {
 		grammar: {
 			keys: Object.keys(library.grammar),
 			values: Object.values(library.grammar)
+		},
+		ast: {
+			keys: Object.keys(library.ast),
+			values: Object.values(library.ast)
 		}
 	};
 

@@ -1,6 +1,7 @@
 module.exports = {
-	evaluate: require('./evaluate'),
+	evaluate: require('./tokenize/evaluate'),
 	tokenize: require('./tokenize'),
-	detect: require('./detect'),
-	statements: require('./statements')
+	detect: require('./tokenize/detect'),
+	statements: require('./statements'),
+	ast: require('./ast')
 }
