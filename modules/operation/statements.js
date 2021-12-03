@@ -46,11 +46,8 @@ module.exports = ({ tokens, library }) => {
 
 	while(index < tokens.length) {
 		let hasFound = false;
-		console.log('TOKEN: (' + index.toString() + '|' + (tokens.length - 1).toString() + ')')
-		console.log(tokens[index])
 
 		library.grammar.values.forEach((statement, statementIndex) => {
-			console.log(`##STATE: ${statementIndex}`)
 			let fulfilled = true;
 			let repeating = 0;
 			let optional = 0;
@@ -67,8 +64,6 @@ module.exports = ({ tokens, library }) => {
 					let isAllowed = false;
 					let isFirstRun = true;
 					let repeatingIndex = 0;
-
-					console.log(`rule: ${ruleIndex} [${index + ruleIndex + repeatingIndex + shift - lookbehind}]`)
 
 					while(isFirstRun || rule.isRepeating) {
 						const tokenIndex = index + ruleIndex + repeatingIndex + shift - lookbehind;
@@ -116,7 +111,6 @@ module.exports = ({ tokens, library }) => {
 
 					if(isAllowed) {
 						repeating += repeatingIndex;
-						console.log('---allowed')
 					}
 
 					ruleIndex++;
@@ -124,12 +118,6 @@ module.exports = ({ tokens, library }) => {
 
 				if(fulfilled) {
 					const updatedIndex = index + shift + ruleIndex - optional - lookbehind - 1;
-					console.log(index)
-					console.log(shift)
-					console.log(ruleIndex)
-					console.log(optional)
-					console.log('FULFILLED')
-					console.log(updatedIndex)
 					hasFound = true;
 
 					if(unusedTokens.length > 0) {
@@ -144,14 +132,10 @@ module.exports = ({ tokens, library }) => {
 					library.grammar.values[statementIndex].forEach((rule, ruleIndex) => {
 						if(rule.isSplitting) {
 							const token = used[ruleIndex];
-							console.log('SPLITTING!')
 							const data = token.data;
 
 							const splitIndex = token.data.indexOf(rule.split);
 							const splitToken = {...token};
-
-							console.log(token.data)
-							console.log(index)
 
 							if(splitIndex !== -1) {
 								token.data = data.substr(0, splitIndex);

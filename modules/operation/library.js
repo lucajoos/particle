@@ -2,19 +2,15 @@ module.exports = ({ tabLength }) => {
 	return {
 		tokens: {
 			punctuation: [{
-				use: /[^\w\s]$/,
-				await: /[\r\n]/,
-				priority: 0,
+				use: /[():!@]$/
 			}],
 
 			meta: [{
 				use: /[\t\r\n]$/,
-				priority: 0
 			}],
 
 			tab: [{
-				use: new RegExp(`^\\s{${tabLength}}$`),
-				priority: 0
+				use: new RegExp(`^\\s{${tabLength}}$`)
 			}],
 
 			comment: [{
@@ -23,11 +19,9 @@ module.exports = ({ tabLength }) => {
 			}],
 
 			identifier: [{
-				use: /!use$/,
-				priority: 1
+				use: /use$/
 			}, {
-				use: /!import$/,
-				priority: 1
+				use: /import$/
 			}]
 		}, grammar: {
 			expression: [{
@@ -172,8 +166,19 @@ module.exports = ({ tabLength }) => {
 				is: true,
 				tokens: [{
 					detection: {
+						tag: /punctuation/
+					},
+
+					data: /!/
+				}]
+			}, {
+				is: true,
+				tokens: [{
+					detection: {
 						tag: /identifier/
-					}
+					},
+
+					data: /[!\s]/g
 				}]
 			}, {
 				is: true,
