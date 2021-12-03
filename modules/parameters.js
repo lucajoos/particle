@@ -5,7 +5,7 @@ const path = require('path');
 module.exports = argv => {
 	const DEFAULTS = {
 		tabLength: 4,
-		libraryPath: './modules/operation/library.js'
+		libraryPath: './library/index.js'
 	};
 
 	program.version(version);
@@ -25,7 +25,6 @@ module.exports = argv => {
 	options.tabLength = parseInt(options.tabLength) || DEFAULTS.tabLength;
 	options.libraryPath = options.library || DEFAULTS.libraryPath;
 
-	// Require the library
 	const library = require(path.resolve(options.libraryPath || DEFAULTS.libraryPath))(options);
 
 	options.library = {
