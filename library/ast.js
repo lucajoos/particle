@@ -3,16 +3,16 @@ module.exports = {
 		brackets: 0
 	},
 
-	rules: [{
+	do: [{
 		use: {
 			statements: {
-				expression: {},
-				unused: {
-					tokens: [{
-						detection: 'punctuation',
-						data: /\(/
-					}]
-				}
+				expression: [],
+				unused: [{
+					detection: {
+						tag: /punctuation/
+					},
+					data: /\(/
+				}]
 			},
 		},
 
@@ -23,6 +23,15 @@ module.exports = {
 		}
 	}, {
 		use: {
+			statements: {
+				unused: [{
+					detection: {
+						tag: /punctuation/
+					},
+					data: /\)/
+				}]
+			},
+
 			dimensions: {
 				brackets: {
 					greater: 0

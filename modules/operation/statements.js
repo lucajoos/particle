@@ -1,7 +1,9 @@
+const { mergeDeep } = require('../helpers');
 module.exports = ({ tokens, library }) => {
 	let result = [];
 	let unusedTokens = [];
 	let index = 0;
+	let level = 0;
 
 	const DEFAULT_RULE = {
 		is: true,
@@ -13,6 +15,11 @@ module.exports = ({ tokens, library }) => {
 		isOptional: false,
 
 		split: null,
+		level: {
+			change: 0,
+			set: null,
+			isAffected: true
+		},
 
 		tokens: []
 	};
@@ -51,6 +58,10 @@ module.exports = ({ tokens, library }) => {
 			let fulfilled = true;
 			let repeating = 0;
 			let optional = 0;
+			let lookahead = 0;
+			let behind = 0;
+			let changes = [];
+			let currentLevel = level;
 			let used = [];
 
 			if(!hasFound) {
@@ -59,7 +70,7 @@ module.exports = ({ tokens, library }) => {
 				let lookbehind = statement.filter(rule => rule?.isLookbehind === undefined ? false : rule?.isLookbehind).length;
 
 				while(ruleIndex < statement.length) {
-					const rule = Object.assign({...DEFAULT_RULE}, statement[ruleIndex]);
+					let rule = mergeDeep(DEFAULT_RULE, statement[ruleIndex]);
 
 					let isAllowed = false;
 					let isFirstRun = true;
@@ -67,7 +78,12 @@ module.exports = ({ tokens, library }) => {
 
 					while(isFirstRun || rule.isRepeating) {
 						const tokenIndex = index + ruleIndex + repeatingIndex + shift - lookbehind;
+
 						let token = tokens[tokenIndex];
+						let type = 0;
+						let resolveIndex = 0;
+
+						rule.token = tokenIndex;
 						const isAllowedDeep = verify(token, rule);
 
 						if(!isAllowedDeep && rule.isRepeating) {
@@ -82,19 +98,49 @@ module.exports = ({ tokens, library }) => {
 							((isAllowedDeep || rule.isOptional) && isFirstRun) ||
 							((isAllowedDeep || rule.isOptional) && rule.isRepeating)
 						) {
-							if(!rule.isLookahead && !rule.isLookbehind) {
-								used.push(token);
+							if(rule.level.isAffected) {
+								if(rule.level.set) {
+									currentLevel = rule.level.set;
+								} else if(rule.level.change !== 0) {
+									currentLevel += rule.level.change;
+								}
 							}
 
-							if(
-								(rule.isOptional && !isAllowedDeep) ||
-								(rule.isLookahead && isAllowedDeep)
-							) {
+							if(!rule.isLookahead && !rule.isLookbehind) {
+								used.push({ ...token, level: currentLevel });
+								resolveIndex = used.length - 1;
+							}
+
+							if(rule.isOptional && !isAllowedDeep) {
 								optional++;
+							} else if(rule.isLookahead && isAllowedDeep) {
+								resolveIndex = tokenIndex;
+								lookahead++;
+								type = 1;
+							} else if(rule.isLookbehind && isAllowedDeep) {
+								resolveIndex = behind;
+								behind++;
+								type = 2;
 							}
 
 							if(((isAllowedDeep || rule.isOptional) && isFirstRun)) {
 								isAllowed = true;
+							}
+
+							if(isAllowedDeep) {
+								changes.push({
+									index: resolveIndex,
+									type,
+									level: currentLevel
+								});
+							}
+
+							if(!rule.level.isAffected) {
+								if(rule.level.set) {
+									currentLevel = rule.level.set;
+								} else if(rule.level.change !== 0) {
+									currentLevel += rule.level.change;
+								}
 							}
 						}
 
@@ -107,9 +153,7 @@ module.exports = ({ tokens, library }) => {
 
 					if(isAllowed !== rule.is) {
 						fulfilled = false;
-					}
-
-					if(isAllowed) {
+					} else {
 						repeating += repeatingIndex;
 					}
 
@@ -117,21 +161,22 @@ module.exports = ({ tokens, library }) => {
 				}
 
 				if(fulfilled) {
-					const updatedIndex = index + shift + ruleIndex - optional - lookbehind - 1;
+					const updatedIndex = index + shift + ruleIndex - optional - lookahead - 1;
 					hasFound = true;
 
 					if(unusedTokens.length > 0) {
 						result.push({
 							statement: 'unused',
 							tokens: unusedTokens
-						})
+						});
 
 						unusedTokens = []
 					}
 
 					library.grammar.values[statementIndex].forEach((rule, ruleIndex) => {
-						if(rule.isSplitting) {
-							const token = used[ruleIndex];
+						const token = used[ruleIndex];
+
+						if(rule.isSplitting && token) {
 							const data = token.data;
 
 							const splitIndex = token.data.indexOf(rule.split);
@@ -142,7 +187,50 @@ module.exports = ({ tokens, library }) => {
 								splitToken.data = data.substr(splitIndex);
 
 								tokens = [...tokens.slice(0, updatedIndex + 1), splitToken, ...tokens.slice(updatedIndex + 1)];
+								changes.splice(updatedIndex + 1);
 							}
+						}
+					});
+
+					let behindTokens = [];
+					let currentStatementIndex = result.length - 1;
+					let currentTokenIndex = result[currentStatementIndex]?.tokens?.length - 1 || 0;
+
+					while(behindTokens.length < behind) {
+						if(currentStatementIndex >= 0) {
+							behindTokens.push({
+								statementIndex: currentStatementIndex,
+								tokenIndex: currentTokenIndex
+							});
+
+							if(currentTokenIndex === 0) {
+								currentStatementIndex--;
+
+								if(currentStatementIndex < 0) {
+									break;
+								}
+
+								currentTokenIndex = result[currentStatementIndex].tokens.length;
+							}
+
+							currentTokenIndex--;
+						}
+					}
+
+					behindTokens = behindTokens.reverse();
+
+					changes.forEach(change => {
+						switch (change.type) {
+							case 0:
+								used[change.index].level = change.level;
+								break;
+							case 1:
+								tokens[change.index].level = change.level;
+								break;
+							case 2:
+								const behindToken = behindTokens[change.index];
+								result[behindToken.statementIndex].tokens[behindToken.tokenIndex].level = change.level;
+								break;
 						}
 					});
 
@@ -151,13 +239,15 @@ module.exports = ({ tokens, library }) => {
 						tokens: used
 					});
 
+					level = currentLevel;
 					index = updatedIndex;
 				}
 			}
 		});
 
 		if(!hasFound) {
-			unusedTokens.push(tokens[index]);
+			const token = tokens[index];
+			unusedTokens.push({...token, level: token.level ? token.level : level });
 		}
 
 		if(index === tokens.length - 1) {

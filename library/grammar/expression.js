@@ -20,6 +20,10 @@ module.exports = [ {
 	is: true,
 	isLookahead: true,
 	isOptional: true,
+	level: {
+		isAffected: false,
+		change: 1
+	},
 	tokens: [ {
 		detection: {
 			tag: /punctuation/
@@ -42,6 +46,11 @@ module.exports = [ {
 	is: true,
 	isLookahead: true,
 	isOptional: true,
+
+	level: {
+		change: -1
+	},
+
 	tokens: [ {
 		detection: {
 			tag: /punctuation/
