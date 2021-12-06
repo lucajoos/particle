@@ -12,9 +12,7 @@ module.exports = [ {
 	tokens: [ {
 		detection: {
 			tag: /identifier/
-		},
-
-		data: /[!\s]/g
+		}
 	} ]
 }, {
 	is: true,

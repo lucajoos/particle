@@ -52,7 +52,6 @@ module.exports = ({ tokens, library }) => {
 	};
 
 	while(index < tokens.length) {
-		console.log(index)
 		let hasFound = false;
 
 		library.grammar.values.forEach((statement, statementIndex) => {
@@ -162,7 +161,6 @@ module.exports = ({ tokens, library }) => {
 				}
 
 				if(fulfilled) {
-					console.log(used)
 					const updatedIndex = index + shift + ruleIndex - optional - lookahead - lookbehind - 1;
 					hasFound = true;
 
