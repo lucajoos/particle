@@ -52,6 +52,7 @@ module.exports = ({ tokens, library }) => {
 	};
 
 	while(index < tokens.length) {
+		console.log(index)
 		let hasFound = false;
 
 		library.grammar.values.forEach((statement, statementIndex) => {
@@ -99,7 +100,7 @@ module.exports = ({ tokens, library }) => {
 							((isAllowedDeep || rule.isOptional) && rule.isRepeating)
 						) {
 							if(rule.level.isAffected) {
-								if(rule.level.set) {
+								if(rule.level.set !== null) {
 									currentLevel = rule.level.set;
 								} else if(rule.level.change !== 0) {
 									currentLevel += rule.level.change;
@@ -136,7 +137,7 @@ module.exports = ({ tokens, library }) => {
 							}
 
 							if(!rule.level.isAffected) {
-								if(rule.level.set) {
+								if(rule.level.set !== null) {
 									currentLevel = rule.level.set;
 								} else if(rule.level.change !== 0) {
 									currentLevel += rule.level.change;
@@ -161,7 +162,8 @@ module.exports = ({ tokens, library }) => {
 				}
 
 				if(fulfilled) {
-					const updatedIndex = index + shift + ruleIndex - optional - lookahead - 1;
+					console.log(used)
+					const updatedIndex = index + shift + ruleIndex - optional - lookahead - lookbehind - 1;
 					hasFound = true;
 
 					if(unusedTokens.length > 0) {

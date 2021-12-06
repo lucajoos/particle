@@ -4,5 +4,6 @@ module.exports = {
 	empty: require('./empty'),
 	section: require('./section'),
 	command: require('./command'),
-	comment: require('./comment')
+	comment: require('./comment'),
+	tab: require('./tab')
 }

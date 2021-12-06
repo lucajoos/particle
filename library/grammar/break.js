@@ -19,6 +19,10 @@ module.exports = [ {
 	} ]
 }, {
 	is: true,
+	level: {
+		isAffected: false,
+		set: 0
+	},
 	tokens: [ {
 		detection: {
 			tag: /meta/

@@ -6,6 +6,7 @@ const util = require('util');
 global.options.args.forEach(async document => {
 	const data = await file.read(document);
 	const tokens = operation.tokenize({ data, library: global.options.library });
+	console.log(tokens)
 	const statements = operation.statements({ tokens, library: global.options.library});
 	//const ast = operation.ast({ statements, library: global.options.library });
 
