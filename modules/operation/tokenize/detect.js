@@ -11,10 +11,12 @@ const DEFAULT_CHECK = {
 };
 
 const calculateLevelChanges = ({ check, level }) => {
-	if(check.level.set) {
-		level = check.level.set;
-	} else if(check.level.change !== 0) {
+	if(check.level.change !== 0) {
 		level += check.level.change;
+	}
+
+	if(typeof check.level.set === 'number') {
+	 	level = check.level.set;
 	}
 
 	return level;

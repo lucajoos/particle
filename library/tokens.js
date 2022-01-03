@@ -20,11 +20,17 @@ module.exports = ({ tabLength }) => {
 		}],
 
 		meta: [{
-			use: /[\t\r\n]$/,
+			use: /[\r\n]$/,
+			level: {
+				set: 0
+			}
 		}],
 
 		tab: [{
-			use: new RegExp(`^\\s{${tabLength}}$`)
+			use: new RegExp(`^\\s{${tabLength}}$`),
+			level: {
+				change: 1
+			}
 		}],
 
 		comment: [{
