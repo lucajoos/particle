@@ -29,7 +29,6 @@ const standardizeRule = (rule=DEFAULT_RULE) => {
 };
 
 const statements = ({ tokens, library }) => {
-	console.log('\n\n/////////////////////////////////////')
 	const { grammar: { keys: grammarKeys, values: grammarValues }} = library;
 
 	let result = [];
@@ -110,7 +109,20 @@ const statements = ({ tokens, library }) => {
 
 		if(rule.isRecursive) {
 			result = statements({
-				tokens,
+				tokens: [...tokens, {
+					detection: {
+						use: null,
+						tag: 'end',
+						priority: -1,
+						match: '',
+						level: {
+							current: 0,
+							calculated: 0
+						}
+					},
+					data: '',
+					index: -1
+				} ],
 				library
 			});
 		} else {
@@ -127,21 +139,18 @@ const statements = ({ tokens, library }) => {
 
 	while(tokenIndex < tokens.length) {
 		const token = tokens[tokenIndex];
-		console.log(`\n\n ############ TOKEN: ${tokenIndex} [${token.detection.tag}] ############`)
 
 		Object.values(candidates.statements).forEach(({ tag, statement, repeat, skip }) => {
 			let ruleIndex = repeat.isRepeating ? repeat.ruleIndex : tokenIndex - candidates.index - repeat.count;
 
 			if(statement[ruleIndex] && skip === 0) {
-				console.log(repeat.count)
-				console.log(`___rule ${ruleIndex}___`)
 				let rule = standardizeRule(statement[ruleIndex]);
 				const nextRule = standardizeRule(statement[ruleIndex + 1]);
 				let isValid = verifyToken({ rule, token, tag });
 				const isNextRuleValid = verifyToken({ rule: nextRule, token, tag});
 
 				if(rule.isOptional && isNextRuleValid) {
-					console.log('--optional')
+					// Prioritize next rule
 					rule = nextRule;
 					isValid = isNextRuleValid;
 					candidates.statements[tag].skip++;
@@ -149,7 +158,6 @@ const statements = ({ tokens, library }) => {
 				}
 
 				if(rule.isRepeating && isValid) {
-					console.log('--valid ...repeating...')
 					// Start repetition
 					candidates.statements[tag].repeat.tokens.push(token);
 					candidates.statements[tag].repeat.isRepeating = true;
@@ -170,7 +178,6 @@ const statements = ({ tokens, library }) => {
 						const isNextValid = verifyToken({ rule: nextRule, token: nextToken, tag});
 
 						if(isNextValid) {
-							console.log('STOP REPETITION')
 							// Stop repetition
 							candidates.statements[tag].repeat.isRepeating = false;
 							candidates.statements[tag].repeat.isFirst = true;
@@ -186,7 +193,6 @@ const statements = ({ tokens, library }) => {
 						}
 					}
 				} else if(isValid) {
-					console.log('--valid')
 					// Normal match
 					candidates.statements[tag].tokens = candidates.statements[tag].tokens.concat(
 						resolveTokens({
@@ -195,7 +201,6 @@ const statements = ({ tokens, library }) => {
 						})
 					);
 				} else {
-					console.log('--invalid')
 					// Remove candidate
 					delete candidates.statements[tag];
 				}
@@ -206,22 +211,25 @@ const statements = ({ tokens, library }) => {
 			if(
 				ruleIndex === statement.length - 1 && candidates.statements[tag]
 			) {
-				console.log('STATEMENT FOUND')
 				// Statement found
+				if(unusedTokens.length > 0) {
+					result.push({
+						tag: 'plain',
+						tokens: unusedTokens
+					});
+
+					unusedTokens = [];
+				}
+
 				result.push(candidates.statements[tag]);
 				resetCandidates({ index: tokenIndex + 1 });
 			}
 		});
 
 		if(Object.values(candidates.statements).length === 0) {
-			console.log('RESETTING')
 			// No statement found
 			const index = candidates.index;
-
-			if(tokenIndex === index) {
-				unusedTokens.push(token);
-			}
-
+			unusedTokens.push(tokens[index]);
 			resetCandidates({ index: index + 1 });
 			tokenIndex = index;
 		}
@@ -236,8 +244,7 @@ const statements = ({ tokens, library }) => {
 			tokens: unusedTokens
 		});
 	}
-	console.log('\n\n/////////////////////////////////////')
-	console.log(result)
+
 	return result;
 };
 
