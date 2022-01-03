@@ -29,6 +29,7 @@ const standardizeRule = (rule=DEFAULT_RULE) => {
 };
 
 const statements = ({ tokens, library }) => {
+	console.log('\n\n/////////////////////////////////////')
 	const { grammar: { keys: grammarKeys, values: grammarValues }} = library;
 
 	let result = [];
@@ -60,7 +61,7 @@ const statements = ({ tokens, library }) => {
 					count: 0,
 					ruleIndex: 0
 				},
-				optional: 0,
+				skip: 0,
 				statement
 			};
 		})
@@ -128,14 +129,24 @@ const statements = ({ tokens, library }) => {
 		const token = tokens[tokenIndex];
 		console.log(`\n\n ############ TOKEN: ${tokenIndex} [${token.detection.tag}] ############`)
 
-		Object.values(candidates.statements).forEach(({ tag, statement, repeat }) => {
+		Object.values(candidates.statements).forEach(({ tag, statement, repeat, skip }) => {
 			let ruleIndex = repeat.isRepeating ? repeat.ruleIndex : tokenIndex - candidates.index - repeat.count;
 
-			if(statement[ruleIndex]) {
+			if(statement[ruleIndex] && skip === 0) {
 				console.log(repeat.count)
 				console.log(`___rule ${ruleIndex}___`)
-				const rule = standardizeRule(statement[ruleIndex]);
-				const isValid = verifyToken({ rule, token, tag });
+				let rule = standardizeRule(statement[ruleIndex]);
+				const nextRule = standardizeRule(statement[ruleIndex + 1]);
+				let isValid = verifyToken({ rule, token, tag });
+				const isNextRuleValid = verifyToken({ rule: nextRule, token, tag});
+
+				if(rule.isOptional && isNextRuleValid) {
+					console.log('--optional')
+					rule = nextRule;
+					isValid = isNextRuleValid;
+					candidates.statements[tag].skip++;
+					candidates.statements[tag].tokens.push([]);
+				}
 
 				if(rule.isRepeating && isValid) {
 					console.log('--valid ...repeating...')
@@ -155,7 +166,6 @@ const statements = ({ tokens, library }) => {
 						tokenIndex + 1 < tokens.length
 					) {
 						// Verify next rule & token
-						const nextRule = standardizeRule(statement[ruleIndex + 1]);
 						const nextToken = tokens[tokenIndex + 1];
 						const isNextValid = verifyToken({ rule: nextRule, token: nextToken, tag});
 
@@ -189,6 +199,8 @@ const statements = ({ tokens, library }) => {
 					// Remove candidate
 					delete candidates.statements[tag];
 				}
+			} else {
+				candidates.statements[tag].skip--;
 			}
 
 			if(
@@ -224,7 +236,8 @@ const statements = ({ tokens, library }) => {
 			tokens: unusedTokens
 		});
 	}
-
+	console.log('\n\n/////////////////////////////////////')
+	console.log(result)
 	return result;
 };
 

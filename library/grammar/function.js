@@ -18,7 +18,8 @@ module.exports = [ {
 }, {
 	isRecursive: true,
 	isRepeating: true,
-	isWildcard: true
+	isWildcard: true,
+	isOptional: true,
 }, {
 	level: {
 		match: 'root'
