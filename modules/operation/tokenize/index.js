@@ -8,10 +8,12 @@ module.exports = ({ data, library }) => {
 	let workspace = '';
 	let index = 0;
 
+	// Loop through all characters
 	while(index < characters.length) {
 		const char = characters[index];
 		workspace = `${workspace}${char}`;
 
+		// Evaluate current token
 		const tokens = evaluate({ workspace, index, library });
 
 		if(tokens) {
@@ -23,6 +25,7 @@ module.exports = ({ data, library }) => {
 			(index === data.length - 1) &&
 			workspace.length > 0
 		) {
+			// Detect last token
 			const detection = detect({ workspace, library });
 
 			structure.push({
@@ -33,13 +36,15 @@ module.exports = ({ data, library }) => {
 					await: null,
 					match: workspace
 				},
-				data: workspace
+				data: workspace,
+				index: data.length - workspace.length
 			});
 		}
 
 		index++;
 	}
 
+	// Add 'end' token to structure
 	structure.push({
 		detection: {
 			use: null,
@@ -48,7 +53,8 @@ module.exports = ({ data, library }) => {
 			await: null,
 			match: ''
 		},
-		data: ''
+		data: '',
+		index: data.length
 	});
 
 	return structure;

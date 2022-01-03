@@ -1,7 +1,21 @@
 module.exports = ({ tabLength }) => {
 	return {
 		punctuation: [{
-			use: /[():!@]$/
+			use: /[:!@]$/
+		}],
+
+		bracketsOpened: [{
+			use: /\($/,
+			level: {
+				change: 1
+			}
+		}],
+
+		bracketsClosed: [{
+			use: /\)$/,
+			level: {
+				change: -1
+			}
 		}],
 
 		meta: [{
