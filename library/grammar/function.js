@@ -10,13 +10,10 @@ module.exports = [ {
 	} ]
 }, {
 	level: {
-		change: 1,
 		id: 'root',
-		isAffected: false
 	},
 	tokens: [{
-		tag: /punctuation/,
-		data: /\(/
+		tag: /bracketsOpened/
 	}]
 }, {
 	isRecursive: true,
@@ -24,12 +21,9 @@ module.exports = [ {
 	isWildcard: true
 }, {
 	level: {
-		change: -1,
-		match: 0,
-		isAffected: false
+		match: 'root'
 	},
 	tokens: [{
-		tag: /punctuation/,
-		data: /\)/
+		tag: /bracketsClosed/
 	}]
 }];
