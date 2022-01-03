@@ -1,5 +1,6 @@
+const util = require('util');
 const statements = ({ tokens, library }) => {
-	console.log(tokens)
+	console.log(util.inspect(tokens, false, 4, true))
 	return null;
 };
 

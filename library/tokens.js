@@ -14,7 +14,8 @@ module.exports = ({ tabLength }) => {
 		bracketsClosed: [{
 			use: /\)$/,
 			level: {
-				change: -1
+				change: -1,
+				isPreCalculated: false
 			}
 		}],
 

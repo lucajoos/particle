@@ -1,25 +1,40 @@
+const _ = require('lodash');
+
 const DEFAULT_CHECK = {
 	use: /.*/,
 	priority: 0,
 	level: {
 		set: null,
-		change: 0
+		change: 0,
+		isPreCalculated: true
 	}
 };
 
-module.exports = ({workspace='', library={}}) => {
+const calculateLevelChanges = ({ check, level }) => {
+	if(check.level.set) {
+		level = check.level.set;
+	} else if(check.level.change !== 0) {
+		level += check.level.change;
+	}
+
+	return level;
+};
+
+module.exports = ({ workspace='', library={}, level=0 }) => {
 	let found = [];
 
 	// Loop through all tokens
 	library.tokens.values.forEach((tag, index) => {
 		tag.forEach(check => {
 			// Assign default check
-			check = Object.assign(DEFAULT_CHECK, check);
+			check = _.merge({}, DEFAULT_CHECK, check);
 			const matches = workspace?.match(check.use);
 
+			// If check is valid
 			if(matches ? matches[0]?.length > 0 : false) {
-				// Valid
-				found.push({...check, tag: library.tokens.keys[index], match: matches[0]});
+				// Pre-calculate level changes
+				const calculatedLevel = calculateLevelChanges({ check, level });
+				found.push({ check, tag: library.tokens.keys[index], match: matches[0], level: { current: check.level.isPreCalculated ? calculatedLevel : level, calculated: calculatedLevel }});
 			}
 		})
 	});

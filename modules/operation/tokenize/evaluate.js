@@ -1,7 +1,7 @@
 const detect = require('./detect');
 
-module.exports = ({ workspace='', index=-1, library={} }) => {
-	const detection = detect({ workspace, library });
+module.exports = ({ workspace='', index=-1, library={}, level=0 }) => {
+	const detection = detect({ workspace, library, level });
 
 	if(detection) {
 		// Token detected
@@ -15,8 +15,11 @@ module.exports = ({ workspace='', index=-1, library={} }) => {
 						use: null,
 						tag: 'text',
 						priority: -1,
-						await: null,
-						match: text
+						match: text,
+						level: {
+							current: level,
+							calculated: level
+						}
 					},
 					data: text,
 					index: index - text.length

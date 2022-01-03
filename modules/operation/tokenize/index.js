@@ -7,6 +7,7 @@ module.exports = ({ data, library }) => {
 	let structure = [];
 	let workspace = '';
 	let index = 0;
+	let level = 0;
 
 	// Loop through all characters
 	while(index < characters.length) {
@@ -14,9 +15,11 @@ module.exports = ({ data, library }) => {
 		workspace = `${workspace}${char}`;
 
 		// Evaluate current token
-		const tokens = evaluate({ workspace, index, library });
+		const tokens = evaluate({ workspace, index, library, level });
 
-		if(tokens) {
+		if(tokens ? tokens.length > 0 : false) {
+			// Set global level to last set level
+			level = tokens[tokens.length - 1].detection.level.calculated;
 			structure = [...structure, ...tokens];
 			workspace = '';
 		}
@@ -26,15 +29,18 @@ module.exports = ({ data, library }) => {
 			workspace.length > 0
 		) {
 			// Detect last token
-			const detection = detect({ workspace, library });
+			const detection = detect({ workspace, library, level });
 
 			structure.push({
 				detection: detection ? detection : {
 					use: null,
 					tag: 'text',
 					priority: -1,
-					await: null,
-					match: workspace
+					match: workspace,
+					level: {
+						current: level,
+						calculated: level
+					}
 				},
 				data: workspace,
 				index: data.length - workspace.length
@@ -50,8 +56,11 @@ module.exports = ({ data, library }) => {
 			use: null,
 			tag: 'end',
 			priority: -1,
-			await: null,
-			match: ''
+			match: '',
+			level: {
+				current: 0,
+				calculated: 0
+			}
 		},
 		data: '',
 		index: data.length
