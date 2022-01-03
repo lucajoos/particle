@@ -20,6 +20,29 @@ const r = {
 
 			return a;
 		}, {});
+	},
+
+	cloneDeep: object => {
+		const isObject = object => object && typeof object === 'object' && !object instanceof RegExp;
+		let result = Object.assign({}, object);
+
+		Object.keys(result).forEach(key => {
+			const value = result[key];
+
+			if(Array.isArray(value)) {
+				result[key] = value.map(current => {
+					if(isObject(current)) {
+						return r.cloneDeep(current)
+					} else {
+						return current;
+					}
+				});
+			} else if(isObject(value)) {
+				result[key] = r.cloneDeep(value);
+			}
+		});
+
+		return result;
 	}
 }
 

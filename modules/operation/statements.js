@@ -1,268 +1,290 @@
-const { mergeDeep } = require('../helpers');
-module.exports = ({ tokens, library }) => {
-	let result = [];
-	let unusedTokens = [];
-	let index = 0;
-	let level = 0;
+const { mergeDeep, cloneDeep } = require('../helpers');
+const _ = require('lodash')
 
-	const DEFAULT_RULE = {
-		is: true,
-
-		isRepeating: false,
-		isLookahead: false,
-		isLookbehind: false,
-		isSplitting: false,
-		isOptional: false,
-
-		split: null,
-		level: {
-			change: 0,
-			set: null,
-			isAffected: true
-		},
-
-		tokens: []
-	};
-
-	const DEFAULT_RULE_TOKEN = {
-		detection: {
-			tag: /.*/,
-		},
-
-		data: /.*/
-	};
-
-	const verify = (token, rule) => {
-		let isAllowed = false;
-
-		if(token && rule) {
-			rule.tokens.forEach(ruleToken => {
-				ruleToken = Object.assign({...DEFAULT_RULE_TOKEN}, ruleToken);
-
-				if(
-					ruleToken.detection.tag.test(token.detection.tag) &&
-					ruleToken.data.test(token.data)
-				) {
-					isAllowed = true;
-				}
-			});
-		}
-
-		return isAllowed
-	};
-
-	while(index < tokens.length) {
-		let hasFound = false;
-
-		library.grammar.values.forEach((statement, statementIndex) => {
-			let fulfilled = true;
-			let repeating = 0;
-			let optional = 0;
-			let lookahead = 0;
-			let behind = 0;
-			let changes = [];
-			let currentLevel = level;
-			let used = [];
-
-			if(!hasFound) {
-				let ruleIndex = 0;
-				let shift = 0;
-				let lookbehind = statement.filter(rule => rule?.isLookbehind === undefined ? false : rule?.isLookbehind).length;
-
-				while(ruleIndex < statement.length) {
-					let rule = mergeDeep(DEFAULT_RULE, statement[ruleIndex]);
-
-					let isAllowed = false;
-					let isFirstRun = true;
-					let repeatingIndex = 0;
-
-					while(isFirstRun || rule.isRepeating) {
-						const tokenIndex = index + ruleIndex + repeatingIndex + shift - lookbehind;
-
-						let token = tokens[tokenIndex];
-						let type = 0;
-						let resolveIndex = 0;
-
-						rule.token = tokenIndex;
-						const isAllowedDeep = verify(token, rule);
-
-						if(!isAllowedDeep && rule.isRepeating) {
-							rule.isRepeating = false;
-
-							if(repeatingIndex > 0) {
-								shift = repeatingIndex - 1;
-							}
-						}
-
-						if(
-							((isAllowedDeep || rule.isOptional) && isFirstRun) ||
-							((isAllowedDeep || rule.isOptional) && rule.isRepeating)
-						) {
-							if(rule.level.isAffected) {
-								if(rule.level.set !== null) {
-									currentLevel = rule.level.set;
-								} else if(rule.level.change !== 0) {
-									currentLevel += rule.level.change;
-								}
-							}
-
-							if(!rule.isLookahead && !rule.isLookbehind) {
-								used.push({ ...token, level: currentLevel });
-								resolveIndex = used.length - 1;
-							}
-
-							if(rule.isOptional && !isAllowedDeep) {
-								optional++;
-							} else if(rule.isLookahead && isAllowedDeep) {
-								resolveIndex = tokenIndex;
-								lookahead++;
-								type = 1;
-							} else if(rule.isLookbehind && isAllowedDeep) {
-								resolveIndex = behind;
-								behind++;
-								type = 2;
-							}
-
-							if(((isAllowedDeep || rule.isOptional) && isFirstRun)) {
-								isAllowed = true;
-							}
-
-							if(isAllowedDeep) {
-								changes.push({
-									index: resolveIndex,
-									type,
-									level: currentLevel
-								});
-							}
-
-							if(!rule.level.isAffected) {
-								if(rule.level.set !== null) {
-									currentLevel = rule.level.set;
-								} else if(rule.level.change !== 0) {
-									currentLevel += rule.level.change;
-								}
-							}
-						}
-
-						if(isFirstRun) {
-							isFirstRun = false;
-						}
-
-						repeatingIndex++;
-					}
-
-					if(isAllowed !== rule.is) {
-						fulfilled = false;
-					} else {
-						repeating += repeatingIndex;
-					}
-
-					ruleIndex++;
-				}
-
-				if(fulfilled) {
-					const updatedIndex = index + shift + ruleIndex - optional - lookahead - lookbehind - 1;
-					hasFound = true;
-
-					if(unusedTokens.length > 0) {
-						result.push({
-							statement: 'unused',
-							tokens: unusedTokens
-						});
-
-						unusedTokens = []
-					}
-
-					library.grammar.values[statementIndex].forEach((rule, ruleIndex) => {
-						const token = used[ruleIndex];
-
-						if(rule.isSplitting && token) {
-							const data = token.data;
-
-							const splitIndex = token.data.indexOf(rule.split);
-							const splitToken = {...token};
-
-							if(splitIndex !== -1) {
-								token.data = data.substr(0, splitIndex);
-								splitToken.data = data.substr(splitIndex);
-
-								tokens = [...tokens.slice(0, updatedIndex + 1), splitToken, ...tokens.slice(updatedIndex + 1)];
-								changes.splice(updatedIndex + 1);
-							}
-						}
-					});
-
-					let behindTokens = [];
-					let currentStatementIndex = result.length - 1;
-					let currentTokenIndex = result[currentStatementIndex]?.tokens?.length - 1 || 0;
-
-					while(behindTokens.length < behind) {
-						if(currentStatementIndex >= 0) {
-							behindTokens.push({
-								statementIndex: currentStatementIndex,
-								tokenIndex: currentTokenIndex
-							});
-
-							if(currentTokenIndex === 0) {
-								currentStatementIndex--;
-
-								if(currentStatementIndex < 0) {
-									break;
-								}
-
-								currentTokenIndex = result[currentStatementIndex].tokens.length;
-							}
-
-							currentTokenIndex--;
-						}
-					}
-
-					behindTokens = behindTokens.reverse();
-
-					changes.forEach(change => {
-						switch (change.type) {
-							case 0:
-								used[change.index].level = change.level;
-								break;
-							case 1:
-								tokens[change.index].level = change.level;
-								break;
-							case 2:
-								const behindToken = behindTokens[change.index];
-								result[behindToken.statementIndex].tokens[behindToken.tokenIndex].level = change.level;
-								break;
-						}
-					});
-
-					result.push({
-						statement: library.grammar.keys[statementIndex],
-						tokens: used
-					});
-
-					level = currentLevel;
-					index = updatedIndex;
-				}
-			}
-		});
-
-		if(!hasFound) {
-			const token = tokens[index];
-			unusedTokens.push({...token, level: token.level ? token.level : level });
-		}
-
-		if(index === tokens.length - 1) {
-			if(unusedTokens.length > 0) {
-				result.push({
-					statement: 'unused',
-					tokens: unusedTokens
-				});
-
-				unusedTokens = [];
-			}
-		}
-
-		index++;
-	}
-
-	return result;
+// Defaults
+const DEFAULT_RULE_TOKEN = {
+    tag: /.*/,
+    data: /.*/
 };
+
+const DEFAULT_RULE = {
+    isRecursive: false,
+    isRepeating: false,
+    isWildcard: false,
+    level: {
+        id: null,
+        change: 0,
+        set: null,
+        match: null,
+        isAffected: true
+    },
+    tokens: []
+};
+
+// Global helper functions
+const standardizeRule = (rule=DEFAULT_RULE) => {
+    rule = mergeDeep(DEFAULT_RULE, rule);
+
+    rule.tokens.map(ruleToken => {
+        return mergeDeep(DEFAULT_RULE_TOKEN, ruleToken);
+    });
+
+    return rule;
+};
+
+const resolveTokens = ({ tokens, rule, library }) => {
+    let result;
+
+    if(rule.isRecursive && false) {
+        result = statements({
+            tokens,
+            library
+        });
+    } else {
+        result = {
+            tag: 'plain',
+            tokens
+        };
+    }
+
+    return result;
+}
+
+const resetCandidates = ({ index, level, candidates, library: { grammar: { keys, values }} }) => {
+    candidates = _.cloneDeep(candidates);
+
+    values.forEach((statement, statementIndex) => {
+        candidates.statements[
+            keys[statementIndex]
+            ] = {
+            tag: keys[statementIndex],
+            tokens: [],
+            level: {
+                current: level,
+                ids: {}
+            },
+            repeating: {
+                is: false,
+                tokens: [],
+                totalCount: 0,
+                ruleIndex: 0
+            },
+            statement
+        };
+    })
+
+    candidates.index = index;
+    return candidates;
+};
+
+const verifyToken = ({ rule = DEFAULT_RULE, token, tag = '', candidates}) => {
+    let isRuleMatching = false;
+    if(tag.length > 0) {
+        // Verify
+        if(!rule.isWildcard) {
+            // Check each token in rule
+            rule.tokens.forEach(ruleToken => {
+                console.log(ruleToken)
+                if(
+                    ruleToken.tag.test(token.detection.tag) &&
+                    ruleToken.data.test(token.data) &&
+                    (
+                        typeof rule.level.match === 'number' ? (
+                            rule.level.match === candidates.statements[tag].level.current
+                        ) : (
+                            typeof rule.level.match === 'string' ? (
+                                candidates.statements[tag].level.ids[rule.level.match] === candidates.statements[tag].level.current
+                            ) : true
+                        )
+                    )
+                ) {
+                    // Token is valid if one valid token is found
+                    isRuleMatching = true;
+                }
+            });
+        } else {
+            isRuleMatching = true;
+        }
+    }
+
+    return isRuleMatching;
+};
+
+const calculateLevelChanges = ({rule = DEFAULT_RULE, tag = '', candidates}) => {
+    candidates = _.cloneDeep(candidates);
+
+    if(tag.length > 0) {
+        let level = candidates.statements[tag].level.current
+
+        // Save pre-calculated changes
+        if(rule.level.id && rule.level.isAffected) {
+            candidates.statements[tag].level.ids[rule.level.id] = level;
+        }
+
+        level += rule.level.change;
+        level = rule.level.set ? rule.level.set : level;
+
+        // Save post-calculated changes
+        if(rule.level.id && !rule.level.isAffected) {
+            candidates.statements[tag].level.ids[rule.level.id] = level;
+        }
+
+        // Save mutated level
+        candidates.statements[tag].level.current = level;
+    }
+
+    return candidates;
+};
+
+const statements = ({ tokens, library }) => {
+    console.log(JSON.parse(JSON.stringify({ hello: /bruh/ })))
+    const { grammar: { values: grammarValues, keys: grammarKeys} } = library;
+
+    console.log('\n\n/////////////////////')
+    let result = [];
+    let unusedTokens = [];
+    let tokenIndex = 0;
+    let level = 0;
+
+    // Candidates object
+    let candidates = {
+        statements: {},
+        index: 0
+    };
+
+    candidates = resetCandidates({ index: tokenIndex, level, candidates, library });
+
+    // Loop through all tokens
+    while(tokenIndex < tokens.length) {
+        const token = tokens[tokenIndex];
+        console.log(`\n\n######## TOKEN: ${tokenIndex} [${token.detection.tag}] #########`)
+
+        // Loop through all statements
+        Object.values(candidates.statements).forEach(({ tag, statement, repeating }, statementIndex) => {
+            // TODO: calculate isRepeating index
+            let ruleIndex = -1;
+
+            if(repeating.is) {
+                ruleIndex = repeating.ruleIndex;
+            } else {
+                ruleIndex = tokenIndex - candidates.index - repeating.totalCount;
+            }
+
+            if(statement[ruleIndex] && ruleIndex > -1) {
+                console.log(`STATEMENT: ${statementIndex}; RULE: ${ruleIndex}`);
+                const rule = standardizeRule(statement[ruleIndex]);
+
+                // Compare rule with token
+                const isRuleMatching = verifyToken({rule, token, tag, candidates});
+                let isNextRuleMatching = false;
+
+                if(rule.isRepeating && ruleIndex + 1 < statement.length && tokenIndex + 1 < tokens.length) {
+                    console.log('CHECK NEXT RULE')
+                    // Check next rule
+                    const nextRule = standardizeRule(statement[ruleIndex + 1]);
+
+                    let nextCandidates = cloneDeep(candidates);
+
+                    if(rule.level.isAffected) {
+                        nextCandidates = calculateLevelChanges({rule: nextRule, tag, candidates: nextCandidates});
+                        console.log(nextCandidates.statements[tag])
+                    }
+
+                    isNextRuleMatching = verifyToken({rule: nextRule, token, tag, candidates: nextCandidates});
+                    candidates.statements[tag].repeating.is = true;
+                    candidates.statements[tag].repeating.ruleIndex = ruleIndex;
+                }
+
+                if(isNextRuleMatching) {
+                    console.log('----NEXT RULE MATCHING')
+
+                    repeating.is = false;
+                    candidates.statements[tag].tokens.push(
+                        resolveTokens({
+                            tokens: candidates.statements[tag].repeating.tokens,
+                            rule,
+                            library: { grammar: { keys: grammarKeys, values: grammarValues }}
+                        })
+                    );
+                    candidates.statements[tag].repeating.tokens = [];
+                } else if(isRuleMatching) {
+                    console.log(rule.level)
+                    if(rule.level.isAffected) {
+                        candidates = calculateLevelChanges({rule, tag, candidates});
+                    }
+
+                    if(rule.isRepeating) {
+                        console.log('...repeating...')
+                        candidates.statements[tag].repeating.totalCount++;
+                        // Push token to repeating tokens
+                        candidates.statements[tag].repeating.tokens.push({...token, level: candidates.statements[tag].level.current});
+                    } else {
+                        candidates.statements[tag].tokens.push(
+                            resolveTokens({
+                                tokens: [{...token, level: candidates.statements[tag].level.current}],
+                                rule,
+                                library: { grammar: { keys: grammarKeys, values: grammarValues }}
+                            })
+                        );
+                    }
+
+                    if(!rule.level.isAffected) {
+                        candidates = calculateLevelChanges({rule, tag, candidates});
+                    }
+                    console.log(candidates.statements[tag])
+
+                    console.log('--valid');
+                } else {
+                    // Remove candidate, rule not fulfilled
+                    delete candidates.statements[tag];
+                    console.log('--invalid');
+                }
+
+                if(
+                    ruleIndex === statement.length - 1 && candidates.statements[tag]
+                ) {
+                    // Found valid statement
+                    console.log('FOUND STATEMENT: ')
+                    console.log(candidates.statements[tag])
+                    if(unusedTokens.length > 0) {
+                        result.push({
+                            tag: 'plain',
+                            tokens: unusedTokens
+                        });
+                    }
+                    result.push(candidates.statements[tag])
+                    resetCandidates({ index: tokenIndex + 1, level, candidates, library });
+                    level = candidates.statements[tag].level.current;
+                }
+            }
+        });
+
+        // Reset candidates
+        if(Object.values(candidates.statements).length === 0) {
+            console.log('RESETTING')
+
+            const index = candidates.index;
+
+            if(tokenIndex === index) {
+                unusedTokens.push(token);
+            }
+
+            resetCandidates({ index: tokenIndex + 1, level, candidates, library });
+            //tokenIndex = index;
+        }
+
+        tokenIndex++;
+    }
+
+    if(unusedTokens.length > 0) {
+        result.push({
+            tag: 'plain',
+            tokens: unusedTokens
+        });
+    }
+
+    console.log('/////////////////////\n\n')
+    return result;
+};
+
+module.exports = statements;
