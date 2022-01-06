@@ -7,14 +7,19 @@ module.exports = ({ data, library }) => {
 	let structure = [];
 	let workspace = '';
 	let index = 0;
+	let level = 0;
 
+	// Loop through all characters
 	while(index < characters.length) {
 		const char = characters[index];
 		workspace = `${workspace}${char}`;
 
-		const tokens = evaluate({ workspace, index, library });
+		// Evaluate current token
+		const tokens = evaluate({ workspace, index, library, level });
 
-		if(tokens) {
+		if(tokens ? tokens.length > 0 : false) {
+			// Set global level to last set level
+			level = tokens[tokens.length - 1].detection.level.calculated;
 			structure = [...structure, ...tokens];
 			workspace = '';
 		}
@@ -23,32 +28,42 @@ module.exports = ({ data, library }) => {
 			(index === data.length - 1) &&
 			workspace.length > 0
 		) {
-			const detection = detect({ workspace, library });
+			// Detect last token
+			const detection = detect({ workspace, library, level });
 
 			structure.push({
 				detection: detection ? detection : {
 					use: null,
 					tag: 'text',
 					priority: -1,
-					await: null,
-					match: workspace
+					match: workspace,
+					level: {
+						current: level,
+						calculated: level
+					}
 				},
-				data: workspace
+				data: workspace,
+				index: data.length - workspace.length
 			});
 		}
 
 		index++;
 	}
 
+	// Add 'end' token to structure
 	structure.push({
 		detection: {
 			use: null,
 			tag: 'end',
 			priority: -1,
-			await: null,
-			match: ''
+			match: '',
+			level: {
+				current: 0,
+				calculated: 0
+			}
 		},
-		data: ''
+		data: '',
+		index: data.length
 	});
 
 	return structure;

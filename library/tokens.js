@@ -1,15 +1,36 @@
 module.exports = ({ tabLength }) => {
 	return {
 		punctuation: [{
-			use: /[():!@]$/
+			use: /[:!@]$/
+		}],
+
+		bracketsOpened: [{
+			use: /\($/,
+			level: {
+				change: 1
+			}
+		}],
+
+		bracketsClosed: [{
+			use: /\)$/,
+			level: {
+				change: -1,
+				isPreCalculated: false
+			}
 		}],
 
 		meta: [{
-			use: /[\t\r\n]$/,
+			use: /[\r\n]$/,
+			level: {
+				set: 0
+			}
 		}],
 
 		tab: [{
-			use: new RegExp(`^\\s{${tabLength}}$`)
+			use: new RegExp(`^\\s{${tabLength}}$`),
+			level: {
+				change: 1
+			}
 		}],
 
 		comment: [{

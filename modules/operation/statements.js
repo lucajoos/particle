@@ -1,268 +1,296 @@
-const { mergeDeep } = require('../helpers');
-module.exports = ({ tokens, library }) => {
+const _ = require('lodash');
+
+// Defaults
+const DEFAULT_RULE_TOKEN = {
+	tag: /.*/,
+	data: /.*/
+};
+
+const DEFAULT_RULE = {
+	isRecursive: false,
+	isRepeating: false,
+	isWildcard: false,
+	isOptional: false,
+	level: {
+		id: null,
+		match: null
+	},
+	tokens: []
+};
+
+const standardizeRule = (rule=DEFAULT_RULE) => {
+	rule = _.merge({}, DEFAULT_RULE, rule);
+
+	rule.tokens = rule.tokens.map(ruleToken => {
+		return _.merge({}, DEFAULT_RULE_TOKEN, ruleToken);
+	});
+
+	return rule;
+};
+
+const statements = ({ tokens, library }) => {
+	const { grammar: { keys: grammarKeys, values: grammarValues }} = library;
+
 	let result = [];
 	let unusedTokens = [];
-	let index = 0;
+	let tokenIndex = 0;
 	let level = 0;
 
-	const DEFAULT_RULE = {
-		is: true,
-
-		isRepeating: false,
-		isLookahead: false,
-		isLookbehind: false,
-		isSplitting: false,
-		isOptional: false,
-
-		split: null,
-		level: {
-			change: 0,
-			set: null,
-			isAffected: true
-		},
-
-		tokens: []
+	let candidates = {
+		statements: {},
+		index: 0
 	};
 
-	const DEFAULT_RULE_TOKEN = {
-		detection: {
-			tag: /.*/,
-		},
+	// Helper functions
+	const resetCandidates = ({ index }) => {
+		// Get each statement from library
+		grammarValues.forEach((statement, statementIndex) => {
+			candidates.statements[
+				grammarKeys[statementIndex]
+				] = {
+				tag: grammarKeys[statementIndex],
+				tokens: [],
+				level: {
+					current: level,
+					ids: {}
+				},
+				repeat: {
+					isRepeating: false,
+					isFirst: true,
+					tokens: [],
+					count: 0,
+					ruleIndex: 0
+				},
+				skip: 0,
+				statement
+			};
+		})
 
-		data: /.*/
+		candidates.index = index;
 	};
 
-	const verify = (token, rule) => {
-		let isAllowed = false;
+	const verifyToken = ({ rule = DEFAULT_RULE, token, tag }) => {
+		let isRuleMatching = false;
 
-		if(token && rule) {
-			rule.tokens.forEach(ruleToken => {
-				ruleToken = Object.assign({...DEFAULT_RULE_TOKEN}, ruleToken);
-
-				if(
-					ruleToken.detection.tag.test(token.detection.tag) &&
-					ruleToken.data.test(token.data)
-				) {
-					isAllowed = true;
-				}
-			});
+		if(rule.level.id) {
+			// Set level id if there is one specified
+			candidates.statements[tag].level.ids[rule.level.id] = token.detection.level.current;
 		}
 
-		return isAllowed
+		if(tag.length > 0) {
+			if(!rule.isWildcard) {
+				// Check each token in rule separately
+				rule.tokens.forEach(ruleToken => {
+					if(
+						ruleToken.tag.test(token.detection.tag) &&
+						ruleToken.data.test(token.data) &&
+						(
+							typeof rule.level.match === 'number' ? (
+								rule.level.match === token.detection.level.current
+							) : (
+								typeof rule.level.match === 'string' ? (
+									candidates.statements[tag].level.ids[rule.level.match] === token.detection.level.current
+								) : true
+							)
+						)
+					) {
+						// Token is valid if one token is valid
+						isRuleMatching = true;
+					}
+				});
+			} else {
+				isRuleMatching = true;
+			}
+		}
+
+		return isRuleMatching;
 	};
 
-	while(index < tokens.length) {
-		let hasFound = false;
+	const resolveTokens = ({ rule=DEFAULT_RULE, tokens }) => {
+		let result;
 
-		library.grammar.values.forEach((statement, statementIndex) => {
-			let fulfilled = true;
-			let repeating = 0;
-			let optional = 0;
-			let lookahead = 0;
-			let behind = 0;
-			let changes = [];
-			let currentLevel = level;
-			let used = [];
-
-			if(!hasFound) {
-				let ruleIndex = 0;
-				let shift = 0;
-				let lookbehind = statement.filter(rule => rule?.isLookbehind === undefined ? false : rule?.isLookbehind).length;
-
-				while(ruleIndex < statement.length) {
-					let rule = mergeDeep(DEFAULT_RULE, statement[ruleIndex]);
-
-					let isAllowed = false;
-					let isFirstRun = true;
-					let repeatingIndex = 0;
-
-					while(isFirstRun || rule.isRepeating) {
-						const tokenIndex = index + ruleIndex + repeatingIndex + shift - lookbehind;
-
-						let token = tokens[tokenIndex];
-						let type = 0;
-						let resolveIndex = 0;
-
-						rule.token = tokenIndex;
-						const isAllowedDeep = verify(token, rule);
-
-						if(!isAllowedDeep && rule.isRepeating) {
-							rule.isRepeating = false;
-
-							if(repeatingIndex > 0) {
-								shift = repeatingIndex - 1;
-							}
+		if(rule.isRecursive) {
+			// Recursively call own function again
+			result = statements({
+				tokens: [...tokens, {
+					detection: {
+						use: null,
+						tag: 'end',
+						priority: -1,
+						match: '',
+						level: {
+							current: 0,
+							calculated: 0
 						}
+					},
+					data: '',
+					index: -1
+				} ],
+				library
+			});
 
-						if(
-							((isAllowedDeep || rule.isOptional) && isFirstRun) ||
-							((isAllowedDeep || rule.isOptional) && rule.isRepeating)
-						) {
-							if(rule.level.isAffected) {
-								if(rule.level.set !== null) {
-									currentLevel = rule.level.set;
-								} else if(rule.level.change !== 0) {
-									currentLevel += rule.level.change;
-								}
-							}
+			// Remove 'end' token from result
+			if(result[result.length - 1].tokens.slice(-1)[0].detection.tag === 'end') {
+				result[result.length - 1].tokens.splice(-1);
 
-							if(!rule.isLookahead && !rule.isLookbehind) {
-								used.push({ ...token, level: currentLevel });
-								resolveIndex = used.length - 1;
-							}
+				if(result[result.length - 1].tokens.length === 0) {
+					result.splice(result.length - 1);
+				}
+			}
+		} else {
+			// Return given tokens
+			result = [{
+				tag: 'plain',
+				tokens
+			}];
+		}
 
-							if(rule.isOptional && !isAllowedDeep) {
-								optional++;
-							} else if(rule.isLookahead && isAllowedDeep) {
-								resolveIndex = tokenIndex;
-								lookahead++;
-								type = 1;
-							} else if(rule.isLookbehind && isAllowedDeep) {
-								resolveIndex = behind;
-								behind++;
-								type = 2;
-							}
+		return result;
+	}
 
-							if(((isAllowedDeep || rule.isOptional) && isFirstRun)) {
-								isAllowed = true;
-							}
+	// Initiate candidates
+	resetCandidates({ index: tokenIndex });
 
-							if(isAllowedDeep) {
-								changes.push({
-									index: resolveIndex,
-									type,
-									level: currentLevel
-								});
-							}
+	// Loop through all tokens
+	while(tokenIndex < tokens.length) {
+		const token = tokens[tokenIndex];
 
-							if(!rule.level.isAffected) {
-								if(rule.level.set !== null) {
-									currentLevel = rule.level.set;
-								} else if(rule.level.change !== 0) {
-									currentLevel += rule.level.change;
-								}
-							}
-						}
+		Object.values(candidates.statements).forEach(({ tag, statement, repeat, skip }) => {
+			// Calculate individual rule index
+			let ruleIndex = repeat.isRepeating ? repeat.ruleIndex : tokenIndex - candidates.index - repeat.count + skip;
 
-						if(isFirstRun) {
-							isFirstRun = false;
-						}
+			// If rule exists & there are no skipped tokens
+			if(statement[ruleIndex] && skip === 0) {
+				let rule = standardizeRule(statement[ruleIndex]);
+				const nextRule = standardizeRule(statement[ruleIndex + 1]);
+				let isValid = verifyToken({ rule, token, tag });
+				const isNextRuleValid = verifyToken({ rule: nextRule, token, tag});
+				let isNextValid = false;
 
-						repeatingIndex++;
-					}
-
-					if(isAllowed !== rule.is) {
-						fulfilled = false;
-					} else {
-						repeating += repeatingIndex;
-					}
-
+				if(
+					rule.isOptional && (
+						!isValid ||
+						(
+							rule.isWildcard && isNextRuleValid
+						)
+					)
+				) {
+					// Current token invalid or the rule is a wildcard
+					// Always prioritize next rule if 'isWildcard' is true
+					// Try verifying next rule
+					rule = nextRule;
 					ruleIndex++;
+					isValid = isNextRuleValid;
+					candidates.statements[tag].skip++;
+					candidates.statements[tag].tokens.push([]);
 				}
 
-				if(fulfilled) {
-					const updatedIndex = index + shift + ruleIndex - optional - lookahead - lookbehind - 1;
-					hasFound = true;
+				if(rule.isRepeating && isValid) {
+					// Start repetition
+					candidates.statements[tag].repeat.tokens.push(token);
+					candidates.statements[tag].repeat.isRepeating = true;
+					candidates.statements[tag].repeat.ruleIndex = ruleIndex;
 
-					if(unusedTokens.length > 0) {
-						result.push({
-							statement: 'unused',
-							tokens: unusedTokens
-						});
-
-						unusedTokens = []
+					if(!candidates.statements[tag].repeat.isFirst) {
+						// Only increase count if there are several repeating tokens
+						candidates.statements[tag].repeat.count++;
+					} else {
+						candidates.statements[tag].repeat.isFirst = false;
 					}
 
-					library.grammar.values[statementIndex].forEach((rule, ruleIndex) => {
-						const token = used[ruleIndex];
-
-						if(rule.isSplitting && token) {
-							const data = token.data;
-
-							const splitIndex = token.data.indexOf(rule.split);
-							const splitToken = {...token};
-
-							if(splitIndex !== -1) {
-								token.data = data.substr(0, splitIndex);
-								splitToken.data = data.substr(splitIndex);
-
-								tokens = [...tokens.slice(0, updatedIndex + 1), splitToken, ...tokens.slice(updatedIndex + 1)];
-								changes.splice(updatedIndex + 1);
-							}
-						}
-					});
-
-					let behindTokens = [];
-					let currentStatementIndex = result.length - 1;
-					let currentTokenIndex = result[currentStatementIndex]?.tokens?.length - 1 || 0;
-
-					while(behindTokens.length < behind) {
-						if(currentStatementIndex >= 0) {
-							behindTokens.push({
-								statementIndex: currentStatementIndex,
-								tokenIndex: currentTokenIndex
-							});
-
-							if(currentTokenIndex === 0) {
-								currentStatementIndex--;
-
-								if(currentStatementIndex < 0) {
-									break;
-								}
-
-								currentTokenIndex = result[currentStatementIndex].tokens.length;
-							}
-
-							currentTokenIndex--;
-						}
+					if(
+						ruleIndex + 1 < statement.length &&
+						tokenIndex + 1 < tokens.length
+					) {
+						// If there is a next token & rule
+						// Verify next rule & token
+						isNextValid = verifyToken({ rule: nextRule, token: tokens[tokenIndex + 1], tag});
 					}
 
-					behindTokens = behindTokens.reverse();
+					// Check if next rule is valid or if it is the last not artificial token
+					if(
+						isNextValid ||
+						tokenIndex + 1 === tokens.length - 1
+					) {
+						// Stop repetition
+						candidates.statements[tag].repeat.isRepeating = false;
+						candidates.statements[tag].repeat.isFirst = true;
 
-					changes.forEach(change => {
-						switch (change.type) {
-							case 0:
-								used[change.index].level = change.level;
-								break;
-							case 1:
-								tokens[change.index].level = change.level;
-								break;
-							case 2:
-								const behindToken = behindTokens[change.index];
-								result[behindToken.statementIndex].tokens[behindToken.tokenIndex].level = change.level;
-								break;
-						}
-					});
+						// Push repeating tokens to candidate
+						candidates.statements[tag].tokens = candidates.statements[tag].tokens.concat(
+							resolveTokens({
+								rule,
+								tokens: candidates.statements[tag].repeat.tokens
+							})
+						);
 
+						candidates.statements[tag].repeat.tokens = [];
+					}
+				} else if(isValid) {
+					// Regular match
+					// Push tokens to candidate
+					candidates.statements[tag].tokens = candidates.statements[tag].tokens.concat(
+						resolveTokens({
+							rule,
+							tokens: [token]
+						})
+					);
+				} else {
+					// Rule is invalid
+					// Remove candidate
+					delete candidates.statements[tag];
+				}
+			} else {
+				// If skip > 0, decrease skip
+				candidates.statements[tag].skip--;
+			}
+
+			if(
+				ruleIndex === statement.length - 1 &&
+				candidates.statements[tag] &&
+				!candidates.statements[tag].repeat.isRepeating
+			) {
+				// All rules have been verified
+				// Statement found
+				if(unusedTokens.length > 0) {
 					result.push({
-						statement: library.grammar.keys[statementIndex],
-						tokens: used
+						tag: 'plain',
+						tokens: unusedTokens
 					});
 
-					level = currentLevel;
-					index = updatedIndex;
+					unusedTokens = [];
 				}
+
+				// Push candidate to result & reset candidates
+				result.push(candidates.statements[tag]);
+				resetCandidates({ index: tokenIndex + 1 });
 			}
 		});
 
-		if(!hasFound) {
-			const token = tokens[index];
-			unusedTokens.push({...token, level: token.level ? token.level : level });
+		if(Object.values(candidates.statements).length === 0) {
+			// No candidates left
+			// All statements were invalid
+			// Do a reset
+			const index = candidates.index;
+			unusedTokens.push(tokens[index]);
+			resetCandidates({ index: index + 1 });
+
+			// Jump to last verified token
+			tokenIndex = index;
 		}
 
-		if(index === tokens.length - 1) {
-			if(unusedTokens.length > 0) {
-				result.push({
-					statement: 'unused',
-					tokens: unusedTokens
-				});
+		tokenIndex++;
+	}
 
-				unusedTokens = [];
-			}
-		}
-
-		index++;
+	if(unusedTokens.length > 0) {
+		// Push remaining tokens to result
+		result.push({
+			tag: 'plain',
+			tokens: unusedTokens
+		});
 	}
 
 	return result;
 };
+
+module.exports = statements;
