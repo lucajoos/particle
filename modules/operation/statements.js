@@ -166,6 +166,7 @@ const statements = ({ tokens, library }) => {
 				const nextRule = standardizeRule(statement[ruleIndex + 1]);
 				let isValid = verifyToken({ rule, token, tag });
 				const isNextRuleValid = verifyToken({ rule: nextRule, token, tag});
+				let isNextValid = false;
 
 				if(rule.isOptional && (
 					!isValid ||
@@ -199,24 +200,27 @@ const statements = ({ tokens, library }) => {
 					) {
 						// If there is a next token & rule
 						// Verify next rule & token
-						const nextToken = tokens[tokenIndex + 1];
-						const isNextValid = verifyToken({ rule: nextRule, token: nextToken, tag});
+						isNextValid = verifyToken({ rule: nextRule, token: tokens[tokenIndex + 1], tag});
+					}
 
-						if(isNextValid) {
-							// Stop repetition
-							candidates.statements[tag].repeat.isRepeating = false;
-							candidates.statements[tag].repeat.isFirst = true;
+					// Check if next rule is valid or if it is the last not artificial token
+					if(
+						isNextValid ||
+						tokenIndex + 1 === tokens.length - 1
+					) {
+						// Stop repetition
+						candidates.statements[tag].repeat.isRepeating = false;
+						candidates.statements[tag].repeat.isFirst = true;
 
-							// Push repeating tokens to candidate
-							candidates.statements[tag].tokens = candidates.statements[tag].tokens.concat(
-								resolveTokens({
-									rule,
-									tokens: candidates.statements[tag].repeat.tokens
-								})
-							);
+						// Push repeating tokens to candidate
+						candidates.statements[tag].tokens = candidates.statements[tag].tokens.concat(
+							resolveTokens({
+								rule,
+								tokens: candidates.statements[tag].repeat.tokens
+							})
+						);
 
-							candidates.statements[tag].repeat.tokens = [];
-						}
+						candidates.statements[tag].repeat.tokens = [];
 					}
 				} else if(isValid) {
 					// Regular match
@@ -238,7 +242,9 @@ const statements = ({ tokens, library }) => {
 			}
 
 			if(
-				ruleIndex === statement.length - 1 && candidates.statements[tag]
+				ruleIndex === statement.length - 1 &&
+				candidates.statements[tag] &&
+				!candidates.statements[tag].repeat.isRepeating
 			) {
 				// All rules have been verified
 				// Statement found

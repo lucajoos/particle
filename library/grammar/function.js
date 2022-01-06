@@ -1,30 +1,6 @@
-module.exports = [ {
-	tokens: [ {
-		tag: /punctuation/,
-		data: /@/
-	} ]
-}, {
-	tokens: [ {
-		tag: /text/,
-		data: /^[^\s]+$/
-	} ]
-}, {
-	level: {
-		id: 'root',
-	},
+module.exports = [{
 	tokens: [{
-		tag: /bracketsOpened/
-	}]
-}, {
-	isRecursive: true,
-	isRepeating: true,
-	isWildcard: true,
-	isOptional: true,
-}, {
-	level: {
-		match: 'root'
-	},
-	tokens: [{
-		tag: /bracketsClosed/
-	}]
+		tag: /punctuation/
+	}],
+	isRepeating: true
 }];
