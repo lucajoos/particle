@@ -128,6 +128,16 @@ const statements = ({ tokens, library }) => {
 				} ],
 				library
 			});
+
+			// Remove 'end' tag in result
+			if(result.length > 0) {
+				result[result.length - 1].tokens.splice(-1);
+
+				// Cleanup result
+				if(result[result.length - 1].tokens.length === 0) {
+					result.splice(-1);
+				}
+			}
 		} else {
 			// Return given tokens
 			result = [{
@@ -158,7 +168,7 @@ const statements = ({ tokens, library }) => {
 				const isNextRuleValid = verifyToken({ rule: nextRule, token, tag});
 
 				if(rule.isOptional && (
-					!isNextRuleValid ||
+					!isValid ||
 					(rule.isWildcard && isNextRuleValid)
 				)) {
 					// Current token invalid or the rule is a wildcard
@@ -248,9 +258,9 @@ const statements = ({ tokens, library }) => {
 		});
 
 		if(Object.values(candidates.statements).length === 0) {
-			// No candidate left
+			// No candidates left
 			// All statements were invalid
-			// Reset
+			// Do a reset
 			const index = candidates.index;
 			unusedTokens.push(tokens[index]);
 			resetCandidates({ index: index + 1 });
