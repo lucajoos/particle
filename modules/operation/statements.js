@@ -43,6 +43,7 @@ const statements = ({ tokens, library }) => {
 
 	// Helper functions
 	const resetCandidates = ({ index }) => {
+		// Get each statement from library
 		grammarValues.forEach((statement, statementIndex) => {
 			candidates.statements[
 				grammarKeys[statementIndex]
@@ -72,12 +73,13 @@ const statements = ({ tokens, library }) => {
 		let isRuleMatching = false;
 
 		if(rule.level.id) {
+			// Set level id if there is one specified
 			candidates.statements[tag].level.ids[rule.level.id] = token.detection.level.current;
 		}
 
 		if(tag.length > 0) {
 			if(!rule.isWildcard) {
-				// Check each token in rule
+				// Check each token in rule separately
 				rule.tokens.forEach(ruleToken => {
 					if(
 						ruleToken.tag.test(token.detection.tag) &&
@@ -108,6 +110,7 @@ const statements = ({ tokens, library }) => {
 		let result;
 
 		if(rule.isRecursive) {
+			// Recursively call own function again
 			result = statements({
 				tokens: [...tokens, {
 					detection: {
@@ -126,6 +129,7 @@ const statements = ({ tokens, library }) => {
 				library
 			});
 		} else {
+			// Return given tokens
 			result = [{
 				tag: 'plain',
 				tokens
@@ -135,22 +139,31 @@ const statements = ({ tokens, library }) => {
 		return result;
 	}
 
+	// Initiate candidates
 	resetCandidates({ index: tokenIndex });
 
+	// Loop through all tokens
 	while(tokenIndex < tokens.length) {
 		const token = tokens[tokenIndex];
 
 		Object.values(candidates.statements).forEach(({ tag, statement, repeat, skip }) => {
+			// Calculate individual rule index
 			let ruleIndex = repeat.isRepeating ? repeat.ruleIndex : tokenIndex - candidates.index - repeat.count;
 
+			// If rule exists & there are no skipped tokens
 			if(statement[ruleIndex] && skip === 0) {
 				let rule = standardizeRule(statement[ruleIndex]);
 				const nextRule = standardizeRule(statement[ruleIndex + 1]);
 				let isValid = verifyToken({ rule, token, tag });
 				const isNextRuleValid = verifyToken({ rule: nextRule, token, tag});
 
-				if(rule.isOptional && isNextRuleValid) {
-					// Prioritize next rule
+				if(rule.isOptional && (
+					!isNextRuleValid ||
+					(rule.isWildcard && isNextRuleValid)
+				)) {
+					// Current token invalid or the rule is a wildcard
+					// Always prioritize next rule if 'isWildcard' is true
+					// Try verifying next rule
 					rule = nextRule;
 					isValid = isNextRuleValid;
 					candidates.statements[tag].skip++;
@@ -164,6 +177,7 @@ const statements = ({ tokens, library }) => {
 					candidates.statements[tag].repeat.ruleIndex = ruleIndex;
 
 					if(!candidates.statements[tag].repeat.isFirst) {
+						// Only increase count if there are several repeating tokens
 						candidates.statements[tag].repeat.count++;
 					} else {
 						candidates.statements[tag].repeat.isFirst = false;
@@ -173,6 +187,7 @@ const statements = ({ tokens, library }) => {
 						ruleIndex + 1 < statement.length &&
 						tokenIndex + 1 < tokens.length
 					) {
+						// If there is a next token & rule
 						// Verify next rule & token
 						const nextToken = tokens[tokenIndex + 1];
 						const isNextValid = verifyToken({ rule: nextRule, token: nextToken, tag});
@@ -182,6 +197,7 @@ const statements = ({ tokens, library }) => {
 							candidates.statements[tag].repeat.isRepeating = false;
 							candidates.statements[tag].repeat.isFirst = true;
 
+							// Push repeating tokens to candidate
 							candidates.statements[tag].tokens = candidates.statements[tag].tokens.concat(
 								resolveTokens({
 									rule,
@@ -193,7 +209,8 @@ const statements = ({ tokens, library }) => {
 						}
 					}
 				} else if(isValid) {
-					// Normal match
+					// Regular match
+					// Push tokens to candidate
 					candidates.statements[tag].tokens = candidates.statements[tag].tokens.concat(
 						resolveTokens({
 							rule,
@@ -201,16 +218,19 @@ const statements = ({ tokens, library }) => {
 						})
 					);
 				} else {
+					// Rule is invalid
 					// Remove candidate
 					delete candidates.statements[tag];
 				}
 			} else {
+				// If skip > 0, decrease skip
 				candidates.statements[tag].skip--;
 			}
 
 			if(
 				ruleIndex === statement.length - 1 && candidates.statements[tag]
 			) {
+				// All rules have been verified
 				// Statement found
 				if(unusedTokens.length > 0) {
 					result.push({
@@ -221,13 +241,16 @@ const statements = ({ tokens, library }) => {
 					unusedTokens = [];
 				}
 
+				// Push candidate to result & reset candidates
 				result.push(candidates.statements[tag]);
 				resetCandidates({ index: tokenIndex + 1 });
 			}
 		});
 
 		if(Object.values(candidates.statements).length === 0) {
-			// No statement found
+			// No candidate left
+			// All statements were invalid
+			// Reset
 			const index = candidates.index;
 			unusedTokens.push(tokens[index]);
 			resetCandidates({ index: index + 1 });
@@ -238,7 +261,7 @@ const statements = ({ tokens, library }) => {
 	}
 
 	if(unusedTokens.length > 0) {
-		// Push remaining tokens
+		// Push remaining tokens to result
 		result.push({
 			tag: 'plain',
 			tokens: unusedTokens
