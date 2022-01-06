@@ -129,13 +129,12 @@ const statements = ({ tokens, library }) => {
 				library
 			});
 
-			// Remove 'end' tag in result
-			if(result.length > 0) {
+			// Remove 'end' token from result
+			if(result[result.length - 1].tokens.slice(-1)[0].detection.tag === 'end') {
 				result[result.length - 1].tokens.splice(-1);
 
-				// Cleanup result
 				if(result[result.length - 1].tokens.length === 0) {
-					result.splice(-1);
+					result.splice(result.length - 1);
 				}
 			}
 		} else {
@@ -158,7 +157,7 @@ const statements = ({ tokens, library }) => {
 
 		Object.values(candidates.statements).forEach(({ tag, statement, repeat, skip }) => {
 			// Calculate individual rule index
-			let ruleIndex = repeat.isRepeating ? repeat.ruleIndex : tokenIndex - candidates.index - repeat.count;
+			let ruleIndex = repeat.isRepeating ? repeat.ruleIndex : tokenIndex - candidates.index - repeat.count + skip;
 
 			// If rule exists & there are no skipped tokens
 			if(statement[ruleIndex] && skip === 0) {
@@ -168,14 +167,19 @@ const statements = ({ tokens, library }) => {
 				const isNextRuleValid = verifyToken({ rule: nextRule, token, tag});
 				let isNextValid = false;
 
-				if(rule.isOptional && (
-					!isValid ||
-					(rule.isWildcard && isNextRuleValid)
-				)) {
+				if(
+					rule.isOptional && (
+						!isValid ||
+						(
+							rule.isWildcard && isNextRuleValid
+						)
+					)
+				) {
 					// Current token invalid or the rule is a wildcard
 					// Always prioritize next rule if 'isWildcard' is true
 					// Try verifying next rule
 					rule = nextRule;
+					ruleIndex++;
 					isValid = isNextRuleValid;
 					candidates.statements[tag].skip++;
 					candidates.statements[tag].tokens.push([]);
@@ -270,6 +274,8 @@ const statements = ({ tokens, library }) => {
 			const index = candidates.index;
 			unusedTokens.push(tokens[index]);
 			resetCandidates({ index: index + 1 });
+
+			// Jump to last verified token
 			tokenIndex = index;
 		}
 
